@@ -1,0 +1,40 @@
+# Claude Code / 하네스
+.claude/
+
+# Node.js / Next.js (구현 대비)
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Vercel
+.vercel/
+
+# Test
+coverage/
+.nyc_output/
+
+# Drizzle
+drizzle/.cache/
