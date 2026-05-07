@@ -3,10 +3,12 @@
 
 # Node.js / Next.js (구현 대비)
 node_modules/
+.pnpm-store/
 .next/
 out/
 build/
 dist/
+tsconfig.tsbuildinfo
 
 # Env
 .env
