@@ -304,3 +304,4 @@ The structural breakpoints that matter for agents: 1440px (content lock), 1068px
 - **`button-primary`** = thumbs up/down, 시도 기록 저장, 검색 실행 등 모든 주요 액션.
 - **dark/light 교차**: moyo는 search 위주 도구라 dark tile은 영상 상세 화면에서만 사용, 메뉴/검색 결과는 light/parchment 위주.
 - **모바일 퍼스트 + 반응형**: 8px base + Apple breakpoint 그대로 차용.
+- **danger 컬러 예외 (단일 추가 허용)**: Apple 시스템에 없는 `danger: rgb(220, 38, 38)` 컬러를 Tailwind 토큰으로 추가. 사용처: 영구 삭제 버튼 텍스트(`typography.caption-strong` 한정). 단일 accent 원칙 예외이나 destructive action 명확화를 위해 이 1개 컬러만 허용. 배경·border·아이콘 등 다른 요소에 확장 사용 금지. (design-decision v1.1 D2 WARN 해소 — tech-decision v2.0 §13.1)

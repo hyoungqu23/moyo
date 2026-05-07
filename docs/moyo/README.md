@@ -12,18 +12,22 @@
 | # | 페이즈 | 산출물 / 게이트 | 상태 | 일시 | 비고 |
 |---|--------|-----------------|------|------|------|
 | 1 | DISCOVER | problem-definition.md | ✅ | 2026-05-03 | 합의 완료 |
-| 2 | DISCOVER | prd.md | ✅ | 2026-05-03 | v0.3 — B1·B2·B3·B4 보강 |
-| 3 | DISCOVER | review-loop (1R) | ✅ | 2026-05-03 | 2R 완료 (1R: UI 묘사 제거 / 2R: B1~B4 보강 후 재실행) |
+| 2 | DISCOVER | prd.md | ✅ | 2026-05-03 | v0.4 — B1·B2·B4·B5β·B6·B7-A 보강 |
+| 3 | DISCOVER | review-loop (1R) | ✅ | 2026-05-03 | 3R 완료 (1R: UI 묘사 제거 / 2R: B1~B4 보강 후 재실행 / 3R: B1·B2·B4·B5β·B6·B7-A 보강 후 재실행) |
 | 4 | DISCOVER | prd-review (R1-R4) | ✅ | 2026-05-03 | 재실행 통과 (R1~R4 PASS) |
-| 5 | DESIGN | design-decision.md | ✅ | 2026-05-03 | design-dialogue 완료 + 작성 완료 |
-| 6 | DESIGN | design-system-gate (D1-D4) | ✅ | 2026-05-03 | D1 PASS · D2 PASS(WARN 1) · D3 PASS · D4 PASS(WARN 1) |
-| 7 | ENGINEER | tech-decision.md | ✅ | 2026-05-03 | Drizzle + 자체 구현 UI + TC-01~TC-20 |
-| 8 | ENGINEER | dev-gate (T1-T5) | ✅ | 2026-05-03 | T1 PASS · T2 PASS · T3 PASS · T4 PASS · T5 PASS |
+| 5 | DESIGN | design-decision.md | ✅ | 2026-05-03 | design-dialogue rewind 1차 — B1·B2·B5β·B6·B7-A 보강 (PRD v0.4 후속) |
+| 6 | DESIGN | design-system-gate (D1-D4) | ✅ | 2026-05-03 | 재실행 통과 — FAIL 0 · WARN 1(영구 삭제 danger 컬러 예외, 조건부 통과) · Comment 1(Combobox 자체 구현) |
+| 7 | ENGINEER | tech-decision.md | ✅ | 2026-05-08 | v2.0 — B1·B2·B5β·B6·B7-A 보강 (Step 스키마, IFrame API, 메인 화면 쿼리, 자동완성, 삭제 정책, 유튜브 접근불가 감지, API 21개, TC-26). ALIGN 5차 rewind: is_unavailable_on_youtube rename, Video/Dish count 쿼리 user_id 보안 경계, Attempt 휴지통 API, 자동완성 인덱스 명세, combobox ARIA 통일. |
+| 8 | ENGINEER | dev-gate (T1-T5) | ✅ | 2026-05-03 | 재실행 통과 — T1 PASS · T2 PASS · T3 PASS · T4 PASS · T5 PASS |
 | 9 | ALIGN | doc-align (1차) | ✅ | 2026-05-03 | Critical 0 / Major 0 / Minor 1(자동 수정) |
-| 10 | ALIGN | decision-log.md | ✅ | 2026-05-03 | v1.2 — L1~L32 전체 결정 기록. Out of Scope 8종. 미결 6종. |
+| 10 | ALIGN | decision-log.md | ✅ | 2026-05-08 | v1.4 — L1~L44 전체 결정 기록. Out of Scope 9종. 미결 9종. ALIGN 5차 rewind 정합성 재정리. |
 | 9-R | ALIGN | doc-align rewind 1차 | ✅ | 2026-05-03 | Codex 외부 검토 6건 정정. Major 4 + Minor 2. L25~L28 추가. |
-| 2-R | DISCOVER | prd-writer rewind | ✅ | 2026-05-03 | 사용자 명시 요청. B1 §1.0 문제 발견 내러티브, B2 §2.3 페인↔기능 매핑, B3 §9.5 Risk·Mitigation, B4 참고 문서 박스. review-loop 2R + prd-review 재실행 PASS. |
+| 2-R | DISCOVER | prd-writer rewind 1차 | ✅ | 2026-05-03 | 사용자 명시 요청. B1 §1.0 문제 발견 내러티브, B2 §2.3 페인↔기능 매핑, B3 §9.5 Risk·Mitigation, B4 참고 문서 박스. review-loop 2R + prd-review 재실행 PASS. |
 | 9-RR | ALIGN | doc-align 재실행 (보강 후) | ✅ | 2026-05-03 | 12개 항목 전항목 PASS. Critical 0 / Major 0 / Minor 0. decision-log v1.2. BUILD 진입 대기. |
+| 2-RR | DISCOVER | prd-writer rewind 2차 | ✅ | 2026-05-03 | 사용자 명시 요청 (외부 팀 리뷰 + 본인 코멘트). B1 자동완성·부분검색 분리, B2 유튜브 삭제 엣지, B4 Attempt 트리거, B5β Step+timestamp, B6 삭제 정책, B7-A 메인 화면. review-loop 3R + prd-review 재실행 PASS. |
+| 9-RRR | ALIGN | doc-align 재실행 4차 (팀리뷰+본인 보강 후) | ✅ | 2026-05-08 | 20개 항목 전항목 PASS. Critical 0 / Major 0 / Minor 0. decision-log v1.3. BUILD 진입 대기. |
+| 9-RRRR | ALIGN | doc-align rewind 6차 (BUILD 후 갭 발견) | ✅ | 2026-05-08 | L45~L48 신규. API 21→22. Video UNIQUE 제약. URL 설계 정비. thumbs 실호출 이행. |
+| 10-R | ALIGN | decision-log v1.5 갱신 | ✅ | 2026-05-08 | L45~L48 추가, 합의 이력 4row 보강 |
 | 11 | BUILD | code-review (C1-C5) | ⬜ | — | — |
 | 12 | VERIFY | qa-harness | ⬜ | — | — |
 | 13 | VERIFY | security-audit | ⬜ | — | — |

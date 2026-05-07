@@ -1,10 +1,10 @@
 # Decision Log — moyo (모두의요리사)
 
-> 버전: 1.2
+> 버전: 1.5
 > 작성일: 2026-05-03
-> 갱신일: 2026-05-03
-> 페이즈: ALIGN (ALIGN 재실행 — Apollo prd-writer rewind 후속)
-> 기반: PRD v0.3 (B1·B2·B3·B4 보강) + Design Decision Doc v1.0 + Tech Decision Doc v1.0 + harness-state.md
+> 갱신일: 2026-05-08 (ALIGN 6차 rewind — BUILD 후 갭 4건 확정: Dish attempts API, Video UNIQUE 제약, URL 설계, thumbs 실호출)
+> 페이즈: ALIGN (ALIGN 6차 rewind — L45~L48 신규)
+> 기반: PRD v0.4 (B1·B2·B4·B5β·B6·B7-A 보강) + Design Decision Doc v1.1 + Tech Decision Doc v2.1 + harness-state.md
 
 ---
 
@@ -609,6 +609,7 @@
 | OOS-6 | 식재료 구매·재고 관리 | 도메인 외. 사용자 명시 비-목표. | 미정 |
 | OOS-7 | 다중 사용자 공유·협업 | 단일 사용자 페르소나. 페르소나 차원과 섭취자 차원 분리. | 미정 |
 | OOS-8 | floating-sticky-bar (빠른 기록 진입) | Phase 2 후보. 현재 미포함. design-decision 컴포넌트 목록에 Phase 2 표기. | Phase 2 |
+| OOS-9 | h: 부분 검색 통합 결과 (한국어 형태소·동의어 처리) | 실사용 후 사용자가 부분 검색을 자주 사용하는지 모니터링 후 도입 검토. PRD §5.2 h, §9 비-목표 명시. | 실사용 후 결정 |
 
 ---
 
@@ -616,12 +617,15 @@
 
 | ID | 항목 | 현재 결정 | 후속 검토 시점 |
 |----|------|----------|-------------|
-| U1 | 한글 메뉴명 검색 인덱싱 정밀도 | lower(name) btree index 기본. trigram 필요 시 pg_trgm 확장 후 GIN index 전환. | 실사용 후 검색 정확도 확인 |
+| U1 | 한글 메뉴명 검색 인덱싱 정밀도 | MVP는 user_id btree 필터 + leading wildcard LIKE sequential scan 허용. 필요 시 pg_trgm 확장 후 GIN index 전환. | 실사용 후 검색 정확도 확인 |
 | U2 | youtube_cache TTL | 24h 기본값. | API quota 소진율 모니터링 후 72h/7d 연장 검토 |
 | U3 | Drizzle migration 자동화 | 수동(drizzle-kit migrate 수동 실행). | Vercel 배포 훅 연동 또는 별도 script 검토 |
 | U4 | RLS 정책 세부 | Drizzle direct connection에서 RLS auth.uid() 미작동 확인. Drizzle WHERE user_id = 단일 보안 경계. RLS는 server 경로 미적용 (참고용 정의만 유지). | 다중 사용자 전환 시 재검토 |
 | U5 | Playwright E2E 선택 여부 | "선택" 상태. | BottomSheet/Dialog 구현 완료 후 판단 |
 | U6 | youtube_cache 만료 레코드 정리 | 수동 또는 Postgres cron. 처리 없으면 영구 누적. | 1개월 운영 후 row count 확인 |
+| U7 | 자동완성 한국어 매칭 정확도 (OQ5) | `lower(name) LIKE lower('%query%')` 기본. 부정확 빈발 시 pg_trgm GIN index 도입 검토. 트리거 기준 미결. | 실사용 후 결정 |
+| U8 | 유튜브 삭제 주기적 체크 | MVP 미포함 (lazy check만). 실사용 후 필요 시 Vercel Cron 주 1회 batch 검토. | 실사용 후 결정 |
+| OQ6-resolved | Step.video_timestamp 영상 길이 초과 검증 | 0 이상 정수 또는 null만 허용(zod). 영상 길이 초과는 허용(사용자 기록 보존). 음수 거부(400). tech-decision §7.3. | RESOLVED — BUILD 페이즈 구현 반영 |
 
 ---
 
@@ -631,7 +635,7 @@
 |----|--------|----------|----------|
 | R1 | 자체 구현 focus trap 브라우저별 동작 차이 | Vitest + @testing-library 단위 테스트(TC-09~TC-14)로 사전 검증 | BUILD 페이즈 구현 완료 후 크로스 브라우저 확인 |
 | R2 | youtube_cache 만료 레코드 누적 | 현재 별도 정리 없음 | 1개월 운영 후 row count 확인(U6) |
-| R3 | 한글 메뉴명 검색 정확도 | pg_trgm 없이 lower(name) btree만으로 부족 가능 | 실사용 후 검색 정확도 확인(U1) |
+| R3 | 한글 메뉴명 검색 정확도 | MVP LIKE sequential scan은 소량 Dish 기준 성능 허용이나, 한글 부분 매칭 정확도는 부족 가능 | 실사용 후 검색 정확도 확인(U1) |
 
 ---
 
@@ -691,6 +695,355 @@ rewind 1차 Critical 불일치: 0건 / Major 정정: 4건 / Minor 정정: 2건 (
 
 ---
 
+## ALIGN 4차 재실행 결정 (2026-05-08) — Apollo PRD v0.4 + Aphrodite v1.1 + Hephaestus v2.0 보강 후속
+
+---
+
+### L33 — B1 자동완성: MVP 포함 / 부분 검색 Phase 2 분리 확정
+
+| 항목 | 내용 |
+|------|------|
+| ID | L33-ALIGN-4TH |
+| 날짜 | 2026-05-08 |
+| 페이즈 | ALIGN (4차 재실행) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | 외부 팀 리뷰에서 자동완성과 부분 검색(한국어 형태소·동의어)의 MVP 포함 여부가 분리되지 않아 범위 불명확 지적. |
+| **대안** | (1) 자동완성 + 부분 검색 모두 MVP 포함, (2) 자동완성만 MVP + 부분 검색 Phase 2, (3) 둘 다 Phase 2 |
+| **선택** | 자동완성(기존 Dish LIKE 매칭 dropdown) MVP 포함. 부분 검색 통합 결과(한국어 형태소·동의어) Phase 2. PRD §4.1 자동완성, §5.1 a 기능, §5.2 h 항목, §9 비-목표에 명시. |
+| **근거** | 자동완성은 기존 Dish 목록 재활용이므로 구현 비용 낮음. 부분 검색(형태소·동의어)은 실사용 후 사용자 패턴 확인 후 도입이 적합. |
+| **영향** | PRD §4.1, §5.1 a, §5.2 h, §9. design-decision Combobox/Autocomplete. tech-decision §9.1 LIKE 쿼리. OOS-9 추가. U7 미결. |
+| **후속 의존성** | U7(자동완성 한국어 정확도 실사용 후 결정). OQ5 실사용 모니터링. |
+
+---
+
+### L34 — B2 영상 유튜브 접근불가 엣지: is_unavailable_on_youtube + lazy check + 시각 처리 확정
+
+| 항목 | 내용 |
+|------|------|
+| ID | L34-ALIGN-4TH |
+| 날짜 | 2026-05-08 |
+| 페이즈 | ALIGN (4차 재실행) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | 유튜브에서 정상 접근이 불가한 영상(삭제·비공개·removed 포함)의 처리 방식이 3문서에 걸쳐 미정이었음. 외부 팀 리뷰에서 지적. |
+| **대안** | (1) 접근 불가 감지 시 Video 레코드 삭제, (2) is_unavailable_on_youtube 플래그 + 보존 정책 분리 |
+| **선택** | `is_unavailable_on_youtube = true` 시: 검색 결과 비노출. 메인 화면 최근 시도·메뉴 페이지 노출(DeletedVideoAlert 표시). Attempt·Step 데이터 보존(P1·P4 페인 직결). lazy check(videos.list 빈 응답). 시각 처리: opacity 0.3 + grayscale + "사용할 수 없는 영상" 배지(thumbs down opacity 0.4와 구분). 컬럼명 is_unavailable_on_youtube — YouTube API는 삭제·비공개 구분 불가이므로 "정상 접근 불가" 의미로 통합. |
+| **근거** | 누적 학습 보존(P1·P4)이 핵심 가치. 영상이 삭제되더라도 내가 쌓은 시도 기록은 보존 우선. lazy check는 API quota 보호와 구현 단순성 균형. |
+| **영향** | PRD §3.2 is_unavailable_on_youtube, §4.2, §4.9. design-decision 영상 카드·영상 상세 DeletedVideoAlert. tech-decision §3.2 schema, §11 lazy check, §8.1 메인 화면 쿼리. |
+| **후속 의존성** | U8(유튜브 삭제 주기적 체크 MVP 미포함, 실사용 후 결정). TC-26 테스트. |
+
+---
+
+### L35 — B4 Attempt 생성 트리거: "기록하기" CTA 단독 확정
+
+| 항목 | 내용 |
+|------|------|
+| ID | L35-ALIGN-4TH |
+| 날짜 | 2026-05-08 |
+| 페이즈 | ALIGN (4차 재실행) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | thumbs 변경이나 단순 영상 조회가 Attempt를 생성하는지 명시적 결정이 없었음. 외부 팀 리뷰에서 트리거 불명확 지적. |
+| **대안** | (1) thumbs 변경 시 Attempt 자동 생성, (2) 영상 조회 시 Attempt 자동 생성, (3) 명시적 CTA만 |
+| **선택** | 명시적 "기록하기" CTA 실행 시만 Attempt 레코드 생성. thumbs up/down은 Video 단위 상태 변경이며 Attempt 생성 안 함. 단순 영상 조회·진입 후 이탈 = Attempt 생성 안 함. |
+| **근거** | M1(Attempt 생성 횟수)이 실제 요리 시도 의지를 반영해야 함. 자동 생성 시 M1 지표 오염. 사용자 명시적 의도 표현이 데이터 품질을 보장. |
+| **영향** | PRD §3.3 생성 트리거, §4.3, §4.4. design-decision "기록하기" CTA. tech-decision API 분리(thumbs PATCH ≠ attempts POST). |
+| **후속 의존성** | TC-05(Attempt 생성 정상), TC-13(thumbs 토글 Attempt 미생성 확인). |
+
+---
+
+### L36 — B5-β Step 엔티티 + YouTube IFrame timestamp 자동 캡처 확정
+
+| 항목 | 내용 |
+|------|------|
+| ID | L36-ALIGN-4TH |
+| 날짜 | 2026-05-08 |
+| 페이즈 | ALIGN (4차 재실행) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | 단계별 메모(Step)와 영상 재생 시점 자동 캡처가 B5-β로 외부 팀 리뷰에서 추가 합의. 데이터 모델·UX·구현 전체에 걸친 신규 결정. |
+| **대안** | (1) Step 없이 Attempt.changes/improvement_note만, (2) Step 엔티티 + 수동 timestamp만, (3) Step + IFrame API 자동 캡처 |
+| **선택** | Step 엔티티 신규(Attempt:Step = 1:N). 필드: id, attempt_id, note(not null), video_timestamp(int nullable 초 단위), created_at, deleted_at. YouTube IFrame Player API `getCurrentTime()` 자동 캡처. 임베드 차단 시 수동 mm:ss 입력 폴백 또는 null. Step 사후 edit·delete 가능. Attempt soft delete 중에는 함께 숨김·복구되고, Attempt hard delete 시 Step은 FK cascade. |
+| **근거** | P4(커스텀 변형 망각) + P5(간 조절 실패) 해소를 위해 단계별 세부 메모 필요. IFrame timestamp 자동 캡처는 사용자 마찰 최소화. |
+| **영향** | PRD §3.4 Step 신규, §4.3, §4.8 Step 삭제 정책, §7.2 M4, §9.5 RM8·RM9. design-decision StepInputRow, IFrame 연동, VQ 확장. tech-decision §3.2 steps 테이블, §7 IFrame API, §9.2 a11y, TC-21·TC-22. |
+| **후속 의존성** | M4 Step 평균 개수 모니터링. RM9(Step 사용률 낮음 시 UX 단순화 검토). U8. |
+
+---
+
+### L37 — B6 삭제 정책: 엔티티별 전략 확정
+
+| 항목 | 내용 |
+|------|------|
+| ID | L37-ALIGN-4TH |
+| 날짜 | 2026-05-08 |
+| 페이즈 | ALIGN (4차 재실행) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | Attempt·Step·Video·Dish 각 엔티티의 삭제 전략이 외부 팀 리뷰에서 통합 결정 요청. soft delete vs hard delete 정책 혼재 정리 필요. |
+| **대안** | 전체 hard delete / 전체 soft delete / 엔티티별 차등 정책 |
+| **선택** | Attempt: soft delete(deleted_at) + 30일 휴지통 + Vercel Cron 자동 hard delete + 복구 가능. Step: Attempt soft delete 중 함께 숨김·복구, Attempt hard delete 시 FK cascade, 개별 edit·delete 가능. Video: Attempt ≥1이면 hard delete deny → is_hidden 토글(검색·메뉴 페이지 비노출). Attempt 0이면 hard delete 가능. Dish: Video 없으면 hard delete, Video 있으면 422 deny + "먼저 영상을 정리해주세요". |
+| **근거** | 누적 학습 보존(P1·P4) 우선. Attempt는 실수로 삭제 가능성 있어 30일 복구 창 제공. Video는 시도 기록이 있으면 영구 삭제보다 숨김이 더 안전. Dish는 최상위 엔티티이므로 하위 데이터 존재 시 삭제 차단. |
+| **영향** | PRD §3.3 Attempt deleted_at, §3.4 Step deleted_at, §4.8 삭제 정책 표. design-decision 삭제 UX 전체(Confirmation dialog, Toast, 휴지통, 숨김 토글). tech-decision §10 전체, TC-25. |
+| **후속 의존성** | Vercel Cron 설정(L38). TC-25 삭제 정책 테스트. |
+
+---
+
+### L38 — B7-A 메인 화면 확정
+
+| 항목 | 내용 |
+|------|------|
+| ID | L38-ALIGN-4TH |
+| 날짜 | 2026-05-08 |
+| 페이즈 | ALIGN (4차 재실행) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | 앱 첫 진입점이 검색 화면이어서 최근 시도 영상으로 빠르게 재접근하는 경로가 없었음. P2(회상 비용) 직결. 외부 팀 리뷰에서 메인 화면 신규 추가 합의. |
+| **대안** | (1) 첫 진입 = 검색 화면, (2) 별도 메인 화면(대시보드) 추가 |
+| **선택** | 메인 화면 신규(화면 인벤토리 4→5). 검색바 + 최근 시도 영상 5개(tried_at DESC LIMIT 5) + 자주 만든 Dish Top 3(count DESC LIMIT 3). 신규 사용자(Attempt 0건) 빈 상태. /api/home 단일 엔드포인트, Promise.all 병렬 쿼리. |
+| **근거** | P2(회상 비용): 마지막으로 시도한 영상에 즉시 재접근 가능. 기존 검색 화면은 메뉴명 입력이 전제되어 "이미 알고 있는 영상 재접근"에 비효율. |
+| **영향** | PRD §2.3 P2 매핑, §4.7 신규, §5.1 g 추가. design-decision 화면 0 메인 화면. tech-decision §8 쿼리 명세, TC-24. |
+| **후속 의존성** | /api/home 구현. attempts_user_id_idx + attempts_deleted_at_idx 인덱스 활용. |
+
+---
+
+### L39 — danger 컬러 Tailwind 토큰 등록 (D2 WARN 해소)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L39-ALIGN-4TH |
+| 날짜 | 2026-05-08 |
+| 페이즈 | ALIGN (4차 재실행) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | design-decision D2 WARN: "영구 삭제" 버튼 danger 컬러(`rgba(220,38,38,1)`)가 Apple 단일 accent 원칙 예외이나 Tailwind 토큰 미등록 상태. tech-decision에서 토큰 등록 결정. |
+| **대안** | (1) 기본 primary 컬러로 통일(destructive action 시각 구분 포기), (2) danger 컬러 토큰 등록(예외 명시) |
+| **선택** | `tailwind.config.ts`에 `danger: rgb(220, 38, 38)`, `danger-foreground: #ffffff` 토큰 등록. 사용처: 영구 삭제 버튼 텍스트 한정(배경 사용 금지). Button 컴포넌트 danger variant 추가. |
+| **근거** | Destructive action(영구 삭제)에 시각적 경고 필수. 텍스트 한정 사용으로 단일 accent 원칙 영향 최소화. D2 WARN 조건부 통과 근거 명시. |
+| **영향** | tech-decision §13.1 tailwind.config.ts, §13.2 Button danger variant. design-decision 시스템 예외 섹션. D2 WARN → 조건부 PASS 전환. |
+| **후속 의존성** | design-system.md 주석 추가 권장(tech-decision §18 기재). |
+
+---
+
+### L40 — YouTube IFrame Player API 통합 전략 확정
+
+| 항목 | 내용 |
+|------|------|
+| ID | L40-ALIGN-4TH |
+| 날짜 | 2026-05-08 |
+| 페이즈 | ALIGN (4차 재실행) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | Step.video_timestamp 자동 캡처를 위한 YouTube IFrame Player API 통합 방식, 임베드 차단 감지 방법, 폴백 전략이 미결이었음. |
+| **대안** | (1) 수동 입력만, (2) IFrame API 자동 캡처 + 수동 폴백, (3) 서버 측 영상 길이 조회 후 검증 |
+| **선택** | 클라이언트에서 YT.Player 동적 로드. `getCurrentTime()` → `Math.floor()` → 초 단위 정수 저장. 에러 코드 101·150 → setEmbedBlocked(true) → 버튼 비활성 + 수동 mm:ss 폴백. 서버 측 `status.embeddable === false` → IFrame 미시도 분기. items[] 빈 응답 → is_unavailable_on_youtube=true 갱신 병행. OQ6: 영상 길이 초과 허용(사용자 기록 보존), 음수 거부(400). |
+| **근거** | IFrame API가 YouTube 공식 메서드로 가장 신뢰성 있음. 임베드 차단 영상은 전체 영상 클립의 일부이므로 수동 입력 폴백이 사용성 보장. |
+| **영향** | PRD §3.4 video_timestamp, §4.3, §8 기술 제약, §9.5 RM8. tech-decision §7 전체. TC-21·TC-22. |
+| **후속 의존성** | RM8(IFrame 차단율 모니터링). TC-21·TC-22 단위 테스트. |
+
+---
+
+### ALIGN 4차 재실행 doc-align 요약 (2026-05-08, iteration 4)
+
+**검증 항목 및 판정:**
+
+| 번호 | 검증 항목 | 판정 | 파일·위치 | 비고 |
+|------|----------|------|----------|------|
+| 1 | 데이터 모델 일관성 (Dish/Video/Attempt/Step 4-tier) | PASS | prd.md §3.1~3.4 / tech-decision.md §3.2 | steps.userId는 보안 경계 구현 세부사항, PRD 공개 계약과 정상 분리 |
+| 2 | MVP 스코프 일관성 (a~e + g + 삭제정책 + 유튜브 접근불가) | PASS | prd.md §5 / design-decision.md 화면 인벤토리 5개 / tech-decision.md §12 API 21개 | 3문서 일치 |
+| 3 | 검색 정렬 로직 일관성 | PASS | prd.md §4.2 / design-decision.md 검색 화면 / tech-decision.md §6.1·§6.2 | isHidden·isUnavailableOnYoutube 필터 3문서 일치 |
+| 4 | 시도 기록 입력 UX (BottomSheet/Dialog + Step) | PASS | design-decision.md 시도 기록 입력 UX / tech-decision.md §7.1·§13.2 | 반응형 분기, IFrame 연동 3문서 일치 |
+| 5 | thumbs 상태 모델 | PASS | prd.md §3.2·§4.4 / tech-decision.md §3.2 thumbs varchar(4) | 변동 없음 |
+| 6 | 영상 카드 메타 (is_hidden·is_unavailable_on_youtube 포함) | PASS | prd.md §3.2 / design-decision.md 영상 카드 / tech-decision.md §3.4 | 파생 필드 + 접근불가 감지 시각 처리 정합 |
+| 7 | description / 상위 댓글 1개 (best-effort) | PASS | prd.md §4.5 / design-decision.md 영상 상세 / tech-decision.md §5.2·TC-18 | 변동 없음 |
+| 8 | 보안 경계 (신규 API 12개 포함 21개 전체) | PASS | tech-decision.md §4.2·§12 / decision-log L27 | requireAuth + WHERE user_id 21개 엔드포인트 전체 명시 |
+| 9 | B1 §1.0 내러티브 ↔ problem-definition.md | PASS | prd.md §1.0 / problem-definition.md | 변동 없음 |
+| 10 | B2 §2.3 매핑 표 ↔ §4.x (§4.7 포함) | PASS | prd.md §2.3 / prd.md §4.1~4.9 | P2 행에 §4.7 추가, P1 행에 steps 추가 확인 |
+| 11 | B3 §9.5 RM8·RM9 ↔ tech-decision | PASS | prd.md §9.5 / tech-decision.md §7.3·TC-22 / prd.md §7.2 M4 | RM8↔TC-22·§7.3, RM9↔M4 연결 일관 |
+| 12 | B4 참고 문서 박스 | PASS | prd.md 헤더 / docs/moyo/ | 변동 없음 |
+| 13 | B1 자동완성 (LIKE + dropdown + 한국어 미적용) | PASS | prd.md §4.1 / design-decision.md 자동완성 dropdown UX / tech-decision.md §9.1 | DB 8개/화면 5개 의도적 분리 tech-decision §9.1 명시 |
+| 14 | B2 영상 유튜브 접근불가 엣지 (시각 구분) | PASS | prd.md §4.9 / design-decision.md 영상 카드 is_unavailable_on_youtube / tech-decision.md §11 | thumbs down opacity 0.4 / 접근불가 영상 opacity 0.3+배지 구분 |
+| 15 | B4 시도 기록 트리거 ("기록하기" CTA only) | PASS | prd.md §3.3·§4.3·§4.4 / design-decision.md CTA / tech-decision.md §12 | thumbs 변경 Attempt 생성 X 3문서 일치 |
+| 16 | B5-β + timestamp (nullable·폴백 일관) | PASS | prd.md §3.4 / design-decision.md StepInputRow / tech-decision.md §3.2·§7·§7.3 | video_timestamp integer nullable 정합, OQ6 해소 |
+| 17 | B6 삭제 정책 (30일 일관성) | PASS | prd.md §4.8 / design-decision.md 삭제 UX / tech-decision.md §10 | 30일 PRD·design·tech 3문서 일치 |
+| 18 | B7-A 메인 화면 (빈 상태 포함) | PASS | prd.md §4.7 / design-decision.md 화면 0 / tech-decision.md §8 | 빈 배열 → EmptyState 구조적 정합 |
+| 19 | danger 컬러 (D2 WARN 해소) | PASS | design-decision.md 시스템 예외 / tech-decision.md §13.1·§18 | Tailwind 토큰 등록, 텍스트 한정 사용 명시 |
+| 20 | IFrame Player API 통합 | PASS | prd.md §8 / design-decision.md Step 입력 UX / tech-decision.md §7 | 에러 101·150, status.embeddable, 수동 폴백 3문서 일관 |
+
+4차 재실행 Critical 불일치: 0건 / Major 불일치: 0건 / Minor 불일치: 0건 / 자동 수정: 0건
+
+---
+
+## ALIGN 5차 rewind 결정 (2026-05-03) — Codex 외부 검토 8건 정정
+
+---
+
+### L41 — API 개수 정합 정정 (19 → 21)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L41-ALIGN-5TH-REWIND |
+| 날짜 | 2026-05-03 |
+| 페이즈 | ALIGN (5차 rewind) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | 여러 문서에 API 개수 "19개"로 명시되어 있었고, 이후 휴지통 조회 `GET /api/attempts/trash`가 구현 명세에 있으나 API Contract 목록에서 빠진 상태가 확인됨. tech-decision §12 엔드포인트 목록을 직접 카운트하면 기존 9개 + 신규 12개 = 21개. Codex 외부 검토에서 Major 불일치로 지적. |
+| **대안** | (1) 휴지통 조회를 기존 Attempt 목록 API의 query option으로 흡수, (2) `GET /api/attempts/trash`를 독립 엔드포인트로 API Contract에 추가하고 모든 문서를 21개로 정합 |
+| **선택** | `GET /api/attempts/trash`를 독립 엔드포인트로 유지. 엔드포인트 목록 직접 카운트(21개)를 정본으로 확정. tech-decision §4.2, §12 본문, 합의 이력 / decision-log 항목 8 / harness-state / README 모두 21개로 통일. |
+| **근거** | 실제 API 목록이 정본. 수치는 목록에서 파생되어야 하며, 수치를 위해 목록을 줄이는 것은 기능 범위 변경. |
+| **영향** | tech-decision §4.2·§12. decision-log. harness-state. README.md. |
+| **후속 의존성** | BUILD 페이즈에서 실제 Route 구현 시 21개 엔드포인트 전체 requireAuth() 확인. |
+
+---
+
+### L42 — Video 삭제 count 쿼리 정정 (휴지통 보호 + user_id 보안 경계)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L42-ALIGN-5TH-REWIND |
+| 날짜 | 2026-05-03 |
+| 페이즈 | ALIGN (5차 rewind) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | tech-decision §10.2 Video count 쿼리에 `deleted_at IS NULL` 조건이 포함되어 있어 휴지통(soft delete)에 있는 attempt가 카운트에서 제외됨 → Video hard delete 가능 판정 → cascade로 휴지통 attempt 삭제 → 30일 복구 정책 위반. 또한 user_id 필터 누락으로 보안 경계 미적용. Codex 외부 검토에서 Major 불일치로 지적. |
+| **대안** | (1) 현행 유지 (복구 정책 위반 허용), (2) deleted_at 조건 제거 + user_id 추가 |
+| **선택** | count 쿼리에서 `deleted_at IS NULL` 조건 제거 — 활성 + 휴지통 attempt 전체 카운트. `eq(attempts.userId, currentUser.id)` 추가 — 보안 경계 적용. count > 0이면 hard delete deny + is_hidden 토글만 허용. 휴지통 attempt 30일 자동 hard delete 시점에 Video 삭제 가능 조건 자연스럽게 충족. |
+| **근거** | 30일 복구 정책 일관성. 보안 경계 누락은 잠재적 데이터 오염 위험. Dish count 쿼리도 동일하게 user_id 필터 추가. |
+| **영향** | tech-decision §10.2·§10.3. |
+| **후속 의존성** | TC-25 삭제 정책 테스트에서 휴지통 attempt 있는 Video hard delete deny 케이스 추가 권장. |
+
+---
+
+### L43 — Dish/Step 삭제 모델 PRD↔Tech 통일
+
+| 항목 | 내용 |
+|------|------|
+| ID | L43-ALIGN-5TH-REWIND |
+| 날짜 | 2026-05-03 |
+| 페이즈 | ALIGN (5차 rewind) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | PRD §3.1 Dish에 `deleted_at` 필드가 있었으나 삭제 정책은 hard delete only → 모순. Tech Drizzle 스키마에 Dish `deletedAt` 없음. PRD §3.4 Step에 `deleted_at` 없었으나 Tech Drizzle 스키마에 `deletedAt` 있고 decision-log L37에도 "개별 Step 삭제 가능" 기록. Codex 외부 검토에서 Major 불일치로 지적. |
+| **대안** | (1) PRD를 Tech에 맞춤, (2) Tech를 PRD에 맞춤 |
+| **선택** | PRD를 Tech에 맞춤 (PRD 우선순위 원칙 예외 — Tech/decision-log가 더 구체적으로 정의된 정본). Dish: PRD `deleted_at` 필드 제거 (hard delete only 정책 유지). Step: PRD에 `deleted_at` 필드 추가 (개별 Step 삭제 가능 — design-decision StepInputRow 삭제 버튼 명세와 정합). |
+| **근거** | Tech Drizzle 스키마와 decision-log L37이 실제 구현 정의를 명시한 정본. PRD가 의도치 않게 충돌 필드를 가지고 있었던 것이므로 Tech 기준으로 통일. |
+| **영향** | prd.md §3.1 Dish 모델 deleted_at 제거. prd.md §3.4 Step 모델 deleted_at 추가. |
+| **후속 의존성** | 없음 (PRD·Tech·decision-log 3문서 정합 완료). |
+
+---
+
+### L44 — is_deleted_on_youtube → is_unavailable_on_youtube rename
+
+| 항목 | 내용 |
+|------|------|
+| ID | L44-ALIGN-5TH-REWIND |
+| 날짜 | 2026-05-03 |
+| 페이즈 | ALIGN (5차 rewind) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | YouTube IFrame API error 100 = "removed or private". YouTube search.list·videos.list 빈 응답도 삭제·비공개 구분 불가. "삭제된 영상"이라는 단정 표현은 기술적으로 부정확. Codex 외부 검토에서 Major 불일치로 지적. |
+| **대안** | (1) 현행 유지 (기술적 부정확 허용), (2) 컬럼명·라벨 갱신, (3) enum 도입 (Phase 2) |
+| **선택** | 컬럼명: `is_deleted_on_youtube` → `is_unavailable_on_youtube`. 의미: "유튜브에서 정상 접근 불가 (삭제 / 비공개 / removed 모두 포함)". 라벨: "삭제된 영상" → "사용할 수 없는 영상". aria-label·배지 텍스트·안내 문구 모두 갱신. enum 도입(삭제/비공개 세부 구분)은 Phase 2 Open Question으로 미결. |
+| **근거** | 기술적 사실에 부합하는 필드명과 라벨. YouTube API 제약을 정직하게 표현. 사용자에게 "왜 사용할 수 없는지" 불필요한 혼란 방지. |
+| **영향** | prd.md §3.2 Video 모델, §4.2, §4.9. design-decision.md 영상 카드, 영상 상세, 접근성 계획, DeletedVideoAlert. tech-decision.md Drizzle 스키마, lazy check, 검색 필터링, 메인 화면 쿼리. decision-log L34 갱신. |
+| **후속 의존성** | Phase 2: enum 도입 검토 (삭제/비공개 세부 구분이 사용자에게 가치 있는지 실사용 후 결정). |
+
+---
+
+## ALIGN 6차 rewind 결정 (2026-05-08) — BUILD 후 갭 4건 확정
+
+---
+
+### L45 — Dish 레벨 활성 Attempts 통합 조회 API 신규 추가
+
+| 항목 | 내용 |
+|------|------|
+| ID | L45-ALIGN-6TH-REWIND |
+| 날짜 | 2026-05-08 |
+| 페이즈 | ALIGN (6차 rewind) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | 메뉴 페이지(Dish 단위 통합 뷰)에서 "내 시도 이력" 섹션이 EmptyState 하드코딩 상태로 방치됨. Dish 레벨에서 활성 Attempt 목록과 각 Attempt의 Video·Step 정보를 통합 조회하는 전용 엔드포인트가 없었음. 기존 `/api/dishes/{id}/videos`는 Video 목록만 반환하며 Attempt 이력을 포함하지 않음. |
+| **대안** | (A) 신규 엔드포인트 `GET /api/dishes/{id}/attempts` 추가, (B) 기존 `/api/dishes/{id}/videos` 응답에 attempts 포함 확장 |
+| **선택** | (A) 신규 엔드포인트 `GET /api/dishes/{id}/attempts` 추가. Dish 소유 검증 + isHidden=false + deletedAt IS NULL 조건. 응답: `{ attempts: Array<{ video, attempt, steps }> }` 형태. API 카운트 21 → 22. |
+| **근거** | 단일 책임 원칙 — 기존 videos API와 관심사 분리. Dish 페이지의 "내 시도 이력" 섹션 기능 구현을 위한 최소 인터페이스. 기존 API 응답 구조 변경 없이 신규 추가. |
+| **영향** | tech-decision §12 API 개수 21→22, §4.2 보안 원칙 문장 22개 갱신. app/api/dishes/[id]/attempts/route.ts 신규 생성. policy.test.ts 카운트 21→22. |
+| **후속 의존성** | app/dish/[slug]/page.tsx에서 `useQuery(['dishes', dish.id, 'attempts'])` 추가. |
+
+---
+
+### L46 — videos 테이블 UNIQUE 제약 추가 (youtube_video_id, dish_id)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L46-ALIGN-6TH-REWIND |
+| 날짜 | 2026-05-08 |
+| 페이즈 | ALIGN (6차 rewind) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | 동일 Dish에 동일 YouTube 영상이 중복 저장될 수 있는 경로가 존재함. VideoDetailClient에서 `upsertVideo()` 호출 시 conflict 없이 INSERT → 중복 레코드 생성 가능. 기존 `videos_youtube_video_id_dish_idx`는 일반 인덱스로 중복 방지 불가. |
+| **대안** | (A) UNIQUE 제약 추가 + onConflictDoUpdate upsert 처리, (B) 애플리케이션 레이어에서 SELECT 후 분기 |
+| **선택** | (A) `unique("videos_youtube_video_id_dish_unique").on(t.youtubeVideoId, t.dishId)` Drizzle UNIQUE 제약 추가. 기존 `videos_youtube_video_id_dish_idx` 일반 인덱스 제거(UNIQUE 제약이 자동 인덱스 생성). POST `/api/videos`에서 `onConflictDoUpdate({ target: [videos.youtubeVideoId, videos.dishId], set: { title, channel, thumbnailUrl, publishedAt } })` 처리. Drizzle migration 신규 생성. |
+| **근거** | DB 레벨에서 중복 방지가 애플리케이션 레이어 분기보다 안전하고 일관성 있음. upsert 패턴으로 재진입 시 메타데이터(제목·채널·썸네일) 갱신 효과도 얻음. |
+| **영향** | db/schema.ts videos 테이블 unique constraint 추가 + 기존 인덱스 제거. db/migrations/0001_*.sql 신규. app/api/videos/route.ts onConflictDoUpdate 교체. tech-decision §3.2 스키마, §3.3 인덱스 정책, §5 Video upsert 정책 명세. |
+| **후속 의존성** | Drizzle migration 실행 필요(pnpm drizzle-kit generate → migrate). |
+
+---
+
+### L47 — 영상 카드 링크에 dish_id + video_id URL 파라미터 전달
+
+| 항목 | 내용 |
+|------|------|
+| ID | L47-ALIGN-6TH-REWIND |
+| 날짜 | 2026-05-08 |
+| 페이즈 | ALIGN (6차 rewind) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | 메인 화면·메뉴 페이지의 영상 카드 클릭 시 `/video/{youtubeVideoId}`로만 이동하여 dish_id 컨텍스트가 소실됨. VideoDetailClient는 `dish_id` URL param이 없으면 "기록하기" 기능을 사용할 수 없고(`upsertVideo()` 실패), video_id param도 없어 thumbs 실호출(L48) 대상을 특정할 수 없음. `/api/youtube/search` 응답에서 이미 저장된 영상의 video.id가 반환되지 않아 클라이언트가 UUID를 알 수 없었음. |
+| **대안** | (A) URL에 `?dish_id={uuid}&video_id={uuid}` 포함, (B) VideoDetailClient에서 별도 API 조회로 video.id 획득 |
+| **선택** | (A) 영상 카드 링크 href: `/video/{youtubeVideoId}?dish_id={dishId}&video_id={videoUuid}`. `/api/home` recentAttempts에서 `video.id`, `video.dishId` 포함(기존 `video: videos` select 유지로 이미 포함). `/api/youtube/search` 응답에서 저장된 영상에 한해 `video.id` 포함(byYoutubeId map에 id 추가). VideoCard에 optional `dishId`/`videoId` props 추가 후 링크 생성 시 사용. |
+| **근거** | URL 파라미터 전달이 클라이언트 추가 API 호출 없이 컨텍스트를 유지하는 최소 비용 방법. 메인 화면과 메뉴 페이지에서 dish_id 없이 "기록하기" 불가 문제를 근본 해결. |
+| **영향** | components/video/VideoCard.tsx props 확장. app/page.tsx VideoCard 호출부 dishId/videoId 전달. app/dish/[slug]/page.tsx VideoCard 호출부 동일. app/search/page.tsx toCard()에 video.id 반영. |
+| **후속 의존성** | L48(thumbs 실호출) — video_id URL param 의존. |
+
+---
+
+### L48 — VideoDetailClient thumbs 토글 시 PATCH /api/videos/[id]/thumbs 실호출
+
+| 항목 | 내용 |
+|------|------|
+| ID | L48-ALIGN-6TH-REWIND |
+| 날짜 | 2026-05-08 |
+| 페이즈 | ALIGN (6차 rewind) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | VideoDetailClient에서 thumbs ToggleGroup이 로컬 state만 변경하고 실제 API 호출이 없었음. thumbs 변경이 DB에 반영되지 않아 다음 진입 시 초기화됨. L35 결정(thumbs 변경은 Attempt 생성과 무관)은 유지됨. |
+| **대안** | (A) URL param video_id 수신 후 useMutation으로 PATCH 실호출 + 낙관적 업데이트 유지, (B) upsertVideo() 결과로 video.id 획득 후 호출 |
+| **선택** | (A) URL search params에서 `video_id` 수신. thumbs 토글 시 `video_id` 있을 때만 `PATCH /api/videos/{video_id}/thumbs` useMutation 실호출. 낙관적 업데이트 유지(L35 결정 — Attempt 생성 트리거와 무관). video_id 없으면 로컬 상태만 변경(영상 상세 직접 진입 경우). |
+| **근거** | thumbs 상태가 DB에 영구 저장되어야 검색 결과 정렬(§4.2)에 반영 가능. 낙관적 업데이트로 즉각적인 UI 피드백 유지. video_id 없는 경우(직접 URL 진입) 우아한 폴백 처리. |
+| **영향** | app/video/[id]/VideoDetailClient.tsx: URL param video_id 수신 + thumbs useMutation 추가. design-decision.md thumbs 토글 동작 이행 명시 보강. |
+| **후속 의존성** | L47(video_id URL param 전달) 선행 의존성. |
+
+---
+
+### ALIGN 6차 rewind doc-align 요약 (2026-05-08)
+
+**갭 4건 — 옵션 A 전체 확정:**
+
+| # | 분류 | 항목 | 선택 |
+|---|------|------|------|
+| 1 | Major | Dish Attempts API 부재 | `GET /api/dishes/{id}/attempts` 신규 (L45). API 21→22. |
+| 2 | Major | videos UNIQUE 제약 누락 | UNIQUE(youtube_video_id, dish_id) + onConflictDoUpdate upsert (L46). |
+| 3 | Major | 영상 카드 dish_id/video_id URL 소실 | URL 파라미터 `?dish_id={uuid}&video_id={uuid}` 전달 (L47). |
+| 4 | Major | thumbs 토글 API 미연결 | PATCH `/api/videos/{video_id}/thumbs` useMutation + 낙관적 업데이트 (L48). |
+
+6차 rewind Critical 불일치: 0건 / Major 확정: 4건 / Minor: 0건
+
+---
+
+### ALIGN 5차 rewind doc-align 요약 (2026-05-03)
+
+**정정 항목:**
+
+| # | 분류 | 항목 | 정정 내용 |
+|---|------|------|---------|
+| 1 | Major | API 개수 정합 | 19개 → 21개. `GET /api/attempts/trash` 포함, 엔드포인트 직접 카운트 기준. |
+| 2 | Major | Video 삭제 SQL | deleted_at IS NULL 제거 (휴지통 보호) + user_id 보안 경계 추가. Dish count 쿼리도 user_id 추가. |
+| 3 | Major | Dish/Step 삭제 모델 | PRD Dish deleted_at 제거 (hard delete only). PRD Step deleted_at 추가 (Tech·decision-log 일치). |
+| 4 | Major | is_deleted_on_youtube rename | → is_unavailable_on_youtube. 라벨 "삭제된 영상" → "사용할 수 없는 영상". 3문서 전체 적용. |
+| 5 | Minor | ARIA role combobox | 자동완성 dropdown 있는 검색 input = combobox. design-decision §aria 섹션·§자동완성 UX, tech-decision §9.2·§13.2 통일. aria-controls 추가. |
+| 6 | Minor | 자동완성 인덱스 명세 | leading wildcard sequential scan 허용 근거 명시. dishes_user_id_idx btree만. Phase 2 pg_trgm GIN 조건 명시. tech-decision §9.1 추가. |
+| 7 | Minor | PRD OQ 섹션 분리 | §10 → §10.1 Open Questions (OQ5만) + §10.2 Resolved Questions (OQ1·2·3·4·6 cross-link). |
+| 8 | Minor | 메타데이터 정정 | prd.md 최종 갱신일 갱신. decision-log v1.3 → v1.4. README tech-decision 비고 v1.1 → v2.0. |
+
+5차 rewind Critical 불일치: 0건 / Major 정정: 4건 / Minor 정정: 4건 (총 8건 모두 처리 완료)
+
+---
+
 ## 합의 이력
 
 | 날짜 | 항목 | 내용 |
@@ -700,3 +1053,7 @@ rewind 1차 Critical 불일치: 0건 / Major 정정: 4건 / Minor 정정: 2건 (
 | 2026-05-03 | doc-align rewind 1차 | Codex 외부 검토 6건 정정. Major 4건(H2·H3 검증 방법, 고정 댓글→상위 댓글, Right Drawer→Dialog 본문, 보안 경계) + Minor 2건(PRD 메타, 캐시 키). L25~L28 신규 결정 추가. |
 | 2026-05-03 | Apollo prd-writer rewind 흡수 | B1 §1.0 내러티브, B2 §2.3 매핑 표, B3 §9.5 RM1~RM7, B4 참고 문서 박스. review-loop 2R + prd-review R1~R4 PASS. L29~L32 신규 결정 추가. |
 | 2026-05-03 | ALIGN 재실행 (iteration 3) | 12개 검증 항목 전항목 PASS. Critical 0 / Major 0 / Minor 0. status: success. BUILD 진입 대기. |
+| 2026-05-08 | Apollo PRD v0.4 + Aphrodite v1.1 + Hephaestus v2.0 보강 흡수 | B1 자동완성 분리, B2 유튜브 삭제 엣지, B4 트리거, B5-β Step+timestamp, B6 삭제 정책, B7-A 메인 화면, danger 컬러, IFrame API. L33~L40 신규 결정 추가. OOS-9, U7, U8 추가. |
+| 2026-05-08 | ALIGN 4차 재실행 (iteration 4) | 20개 검증 항목 전항목 PASS. Critical 0 / Major 0 / Minor 0. status: success. BUILD 진입 대기. |
+| 2026-05-08 | ALIGN 5차 rewind — Codex 외부 검토 후 정합성 재정리 (rewind_count 증가 없음 — 사용자 명시 요청) | Major 4건: API 개수 19→21 정합(L41, Attempt trash API 포함), Video 삭제 SQL deleted_at 제거+user_id 추가(L42), Dish/Step 삭제 모델 PRD↔Tech 통일(L43), is_deleted_on_youtube→is_unavailable_on_youtube rename(L44). Minor 4건: ARIA combobox 통일, 자동완성 인덱스 명세 보강, PRD OQ 섹션 분리(§10.1/10.2), 메타데이터 정정. decision-log v1.4. |
+| 2026-05-08 | ALIGN 6차 rewind — BUILD 후 갭 4건 확정 | L45: GET /api/dishes/{id}/attempts 신규(API 21→22). L46: videos UNIQUE(youtube_video_id, dish_id) + onConflictDoUpdate. L47: 영상 카드 링크 ?dish_id=&video_id= URL 파라미터 전달. L48: thumbs 토글 → PATCH /api/videos/{id}/thumbs 실호출 + 낙관적 업데이트. decision-log v1.5. |
