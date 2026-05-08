@@ -1,10 +1,10 @@
-# MVP — moyo (모두의요리사) 1차 릴리스 구현
+# MVP — nayo (모두의요리사) 1차 릴리스 구현
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 GOAL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-`docs/moyo/prd.md` v0.4 + `docs/moyo/tech-decision.md` v2.0 + `docs/moyo/design-decision.md` v1.1 에 명세된 MVP 1차 릴리스 기능 전체를 구현하여 로컬에서 실행 가능 + 모든 테스트 케이스(TC-01~TC-26) 통과 상태로 만든다.
+`docs/nayo/prd.md` v0.4 + `docs/nayo/tech-decision.md` v2.0 + `docs/nayo/design-decision.md` v1.1 에 명세된 MVP 1차 릴리스 기능 전체를 구현하여 로컬에서 실행 가능 + 모든 테스트 케이스(TC-01~TC-26) 통과 상태로 만든다.
 
 구현 대상 기능 (PRD §5.1):
 
@@ -25,11 +25,11 @@ GOAL
 CONTEXT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-작업 디렉토리: `/Users/hyoungmin/Developments/HyoungMin/side-project/moyo`
+작업 디렉토리: `/Users/hyoungmin/Developments/HyoungMin/side-project/nayo`
 
-현재 상태: `docs/moyo/`만 존재. 코드 zero-state. Next.js 프로젝트 부트스트래핑부터 시작.
+현재 상태: `docs/nayo/`만 존재. 코드 zero-state. Next.js 프로젝트 부트스트래핑부터 시작.
 
-핵심 참조 문서 (모두 `docs/moyo/` 하위, 변경 금지):
+핵심 참조 문서 (모두 `docs/nayo/` 하위, 변경 금지):
 
 - prd.md — 데이터 모델·기능 요구사항·MVP 스코프·검증 가설·성공 지표
 - tech-decision.md — 스택·Drizzle 스키마·API 21개·정렬 알고리즘·테스트 케이스 TC-01~TC-26
@@ -123,7 +123,7 @@ CONSTRAINTS
 [금지]
 
 - PRD에 UI 묘사 추가 금지 (PRD-UI 분리 영구 가이드, 메모리 등록됨)
-- 문서(docs/moyo/\*.md) 수정 금지 — 결정은 이미 확정됨
+- 문서(docs/nayo/\*.md) 수정 금지 — 결정은 이미 확정됨
 - 외부 headless UI 라이브러리 도입 금지
 - 기능 외삽 금지 — Phase 2 백로그(LLM 요약, 통계, 부분 검색 통합)는 절대 구현 금지
 - 클릭 이벤트 수집 금지 — M1·M2·M3·M4는 DB count로만 측정

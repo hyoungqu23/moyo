@@ -1,4 +1,4 @@
-# Decision Log — moyo (모두의요리사)
+# Decision Log — nayo (모두의요리사)
 
 > 버전: 1.5
 > 작성일: 2026-05-03
@@ -10,7 +10,7 @@
 
 ## 개요
 
-본 문서는 moyo(모두의요리사) 피처의 DISCOVER → DESIGN → ENGINEER 전 페이즈에 걸쳐 확정된 의사결정을 종합한 단일 기록이다. 각 결정에는 컨텍스트·대안·선택·근거·영향·후속 의존성을 명시한다. ALIGN 페이즈 이후 BUILD(구현) 페이즈의 팀 결정 추출 근거로 활용된다.
+본 문서는 nayo(모두의요리사) 피처의 DISCOVER → DESIGN → ENGINEER 전 페이즈에 걸쳐 확정된 의사결정을 종합한 단일 기록이다. 각 결정에는 컨텍스트·대안·선택·근거·영향·후속 의존성을 명시한다. ALIGN 페이즈 이후 BUILD(구현) 페이즈의 팀 결정 추출 근거로 활용된다.
 
 ---
 
@@ -44,11 +44,11 @@
 | 페이즈 | DISCOVER |
 | 상태 | CONFIRMED |
 | **컨텍스트** | 피처 작업 시작 시 임시명 `recipe-tracker`를 사용 중이었음. 사용자가 원하는 명칭 확정 필요. |
-| **대안** | `recipe-tracker` (임시명), `moyo` (사용자 제안) |
-| **선택** | `moyo` — "모두의요리사"의 줄임말. |
+| **대안** | `recipe-tracker` (임시명), `nayo` (사용자 제안) |
+| **선택** | `nayo` — "모두의요리사"의 줄임말. |
 | **근거** | 사용자 명시 지정. 도메인과 페르소나를 함축하는 이름. |
 | **영향** | 모든 파일 경로, 문서 헤더, harness-state 피처명 통일. |
-| **후속 의존성** | docs/moyo/ 디렉토리 구조, README.md 피처명. |
+| **후속 의존성** | docs/nayo/ 디렉토리 구조, README.md 피처명. |
 
 ---
 
@@ -285,7 +285,7 @@
 | 날짜 | 2026-05-03 |
 | 페이즈 | DESIGN |
 | 상태 | CONFIRMED |
-| **컨텍스트** | Apple Web Design System 컴포넌트를 moyo 각 화면에 어떻게 매핑할지 결정 필요. |
+| **컨텍스트** | Apple Web Design System 컴포넌트를 nayo 각 화면에 어떻게 매핑할지 결정 필요. |
 | **대안** | 해당 없음 (매핑 정의 작업 자체가 결정). |
 | **선택** | store-utility-card 변형(영상 카드), product-tile-dark(영상 상세 상단), button-primary(모든 주요 CTA), search-input(메뉴 검색). |
 | **근거** | Photography-first 원칙에 최적화된 컴포넌트 선택. |
@@ -591,7 +591,7 @@
 | **컨텍스트** | PRD 헤더에 연관 산출물 위치 정보가 없어 단독 독해 시 다른 문서로의 진입점 부재. |
 | **대안** | (1) README 참조 안내, (2) PRD 헤더 내 참고 문서 박스 |
 | **선택** | PRD 헤더(L8~L16)에 참고 문서 박스 신규 삽입. 7개 산출물 경로 명시: problem-definition.md / design-decision.md / design-system.md / tech-decision.md / decision-log.md / design-notes-from-discover.md / harness-state.md. |
-| **근거** | 사용자 명시 요청. ALIGN 검증 항목 12에서 7개 파일 모두 docs/moyo/ 하위 실재 확인 완료. |
+| **근거** | 사용자 명시 요청. ALIGN 검증 항목 12에서 7개 파일 모두 docs/nayo/ 하위 실재 확인 완료. |
 | **영향** | prd.md L8~L16 신규. 파일 경로 변경 시 박스 동기화 필수. |
 | **후속 의존성** | 신규 산출물 추가 시 참고 문서 박스 갱신. |
 
@@ -689,7 +689,7 @@ rewind 1차 Critical 불일치: 0건 / Major 정정: 4건 / Minor 정정: 2건 (
 | 9 | B1 §1.0 내러티브 ↔ problem-definition.md 정합 | PASS | prd.md L21~L34 / problem-definition.md 전체 | 의미 변질 없음. 격주·우회 수단 0·자기 귀인 일치 |
 | 10 | B2 §2.3 매핑 표 ↔ §4.x 기능 ID 정합 | PASS | prd.md L75~L85 / prd.md §4.1~§4.6 / §7 | §4.3·§4.5·§4.2·§4.6·§4.4 ID 일치. M1~M3 연결 페인 일관 |
 | 11 | B3 §9.5 RM1~RM7 ↔ 다른 문서 리스크 정합 | PASS | prd.md L262~L274 / tech-decision.md §5.2·§5.3·TC-18·§7.2·§9.1 / decision-log U2·R1 | RM5↔U2 TTL 24h 일치. RM6↔TC-18 폴백 일치. RM7↔R1 일치. RM1↔§5.2 d-2차 일치. RM2~RM4↔§6 H2~H4 자기보고 일치 |
-| 12 | B4 참고 문서 박스 ↔ 실제 파일 존재 (7개) | PASS | prd.md L8~L16 / docs/moyo/ 디렉토리 | 7개 파일 전부 실재 확인 |
+| 12 | B4 참고 문서 박스 ↔ 실제 파일 존재 (7개) | PASS | prd.md L8~L16 / docs/nayo/ 디렉토리 | 7개 파일 전부 실재 확인 |
 
 재실행 Critical 불일치: 0건 / Major 불일치: 0건 / Minor 자동 수정: 0건
 
@@ -852,7 +852,7 @@ rewind 1차 Critical 불일치: 0건 / Major 정정: 4건 / Minor 정정: 2건 (
 | 9 | B1 §1.0 내러티브 ↔ problem-definition.md | PASS | prd.md §1.0 / problem-definition.md | 변동 없음 |
 | 10 | B2 §2.3 매핑 표 ↔ §4.x (§4.7 포함) | PASS | prd.md §2.3 / prd.md §4.1~4.9 | P2 행에 §4.7 추가, P1 행에 steps 추가 확인 |
 | 11 | B3 §9.5 RM8·RM9 ↔ tech-decision | PASS | prd.md §9.5 / tech-decision.md §7.3·TC-22 / prd.md §7.2 M4 | RM8↔TC-22·§7.3, RM9↔M4 연결 일관 |
-| 12 | B4 참고 문서 박스 | PASS | prd.md 헤더 / docs/moyo/ | 변동 없음 |
+| 12 | B4 참고 문서 박스 | PASS | prd.md 헤더 / docs/nayo/ | 변동 없음 |
 | 13 | B1 자동완성 (LIKE + dropdown + 한국어 미적용) | PASS | prd.md §4.1 / design-decision.md 자동완성 dropdown UX / tech-decision.md §9.1 | DB 8개/화면 5개 의도적 분리 tech-decision §9.1 명시 |
 | 14 | B2 영상 유튜브 접근불가 엣지 (시각 구분) | PASS | prd.md §4.9 / design-decision.md 영상 카드 is_unavailable_on_youtube / tech-decision.md §11 | thumbs down opacity 0.4 / 접근불가 영상 opacity 0.3+배지 구분 |
 | 15 | B4 시도 기록 트리거 ("기록하기" CTA only) | PASS | prd.md §3.3·§4.3·§4.4 / design-decision.md CTA / tech-decision.md §12 | thumbs 변경 Attempt 생성 X 3문서 일치 |

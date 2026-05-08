@@ -1,4 +1,4 @@
-# moyo (모두의요리사) — 문제 정의
+# nayo (모두의요리사) — 문제 정의
 
 > 합의일: 2026-05-03
 > 페이즈: DISCOVER → initiative-keeper 완료

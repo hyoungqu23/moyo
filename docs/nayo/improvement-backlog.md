@@ -1,4 +1,4 @@
-# improvement-backlog.md — moyo 세션 (2026-05-03 ~ 2026-05-07)
+# improvement-backlog.md — nayo 세션 (2026-05-03 ~ 2026-05-07)
 
 > session-wrap 압축 모드. Hermes가 누적된 friction_signals를 직접 정리.
 > 4-agent (Hera·Zeus·Demeter·Hestia) skip — 사용자 피로 강.

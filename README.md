@@ -1,6 +1,6 @@
-# moyo
+# nayo
 
-Next.js App Router MVP for the `docs/moyo` product spec.
+Next.js App Router MVP for the `docs/nayo` product spec.
 
 ## Local Setup
 

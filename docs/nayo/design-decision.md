@@ -1,4 +1,4 @@
-# Design Decision — moyo (모두의요리사)
+# Design Decision — nayo (모두의요리사)
 
 > 버전: 1.1
 > 작성일: 2026-05-03
@@ -10,15 +10,15 @@
 
 ## 참조 문서
 
-- `docs/moyo/prd.md` — 데이터 모델 · 기능 요구사항 (UI 묘사 없음)
-- `docs/moyo/design-notes-from-discover.md` — DISCOVER 중 수집된 UI 노트
-- `docs/moyo/design-system.md` — moyo 적용 Apple Web Design System 명세
+- `docs/nayo/prd.md` — 데이터 모델 · 기능 요구사항 (UI 묘사 없음)
+- `docs/nayo/design-notes-from-discover.md` — DISCOVER 중 수집된 UI 노트
+- `docs/nayo/design-system.md` — nayo 적용 Apple Web Design System 명세
 
 ---
 
 ## 디자인 시스템 선언
 
-**Apple Web Design System 차용**. 별도 명세 `docs/moyo/design-system.md` 참조.
+**Apple Web Design System 차용**. 별도 명세 `docs/nayo/design-system.md` 참조.
 
 **핵심 원칙:**
 - Photography-first: 유튜브 영상 썸네일이 product render 자리를 대체. UI는 받침대.
@@ -252,7 +252,7 @@
 
 ## 컴포넌트 목록
 
-| Apple 컴포넌트 | moyo 사용처 | variant | 근거 |
+| Apple 컴포넌트 | nayo 사용처 | variant | 근거 |
 |---|---|---|---|
 | `{component.global-nav}` | 상단 네비게이션 (홈/검색/메뉴 보관함) | 기본 | 전역 네비게이션 표준 |
 | `{component.sub-nav-frosted}` | 검색 화면/메뉴 페이지 카테고리 헤더 | frosted glass sticky | 스크롤 중 컨텍스트 유지 |

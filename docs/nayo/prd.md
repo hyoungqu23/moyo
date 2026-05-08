@@ -1,11 +1,11 @@
-# PRD — moyo (모두의요리사)
+# PRD — nayo (모두의요리사)
 
 > 버전: 0.4 (B1·B2·B4·B5β·B6·B7-A 보강 — prd-writer rewind 2차 사용자 명시 요청)
 > 작성일: 2026-05-03
 > 최종 갱신: 2026-05-08 (ALIGN 6차 rewind — Video UNIQUE 제약 명시)
 > 페이즈: DISCOVER · prd-review 재실행 완료 (R1~R4 PASS)
 
-> 참고 문서 (`docs/moyo/`):
+> 참고 문서 (`docs/nayo/`):
 > - problem-definition.md — DISCOVER 단계 문제 정의 원본
 > - design-decision.md — DESIGN 단계 화면·UX·a11y 결정
 > - design-system.md — Apple Web Design System 차용 명세

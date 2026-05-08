@@ -1,4 +1,4 @@
-# moyo (모두의요리사) — 세션 트랜스크립트
+# nayo (모두의요리사) — 세션 트랜스크립트
 
 > 날짜: 2026-05-03 ~ 2026-05-06
 > 진행: Aents Product Harness — Hermes(PM) 오케스트레이션
@@ -65,7 +65,7 @@
 
 활용)은 기록만 해두고, 우선 문제부터 합의하겠습니다.
 
-⏺ Bash(mkdir -p /Users/hyoungmin/Developments/HyoungMin/side-project/moyo/docs/recipe-tracker)
+⏺ Bash(mkdir -p /Users/hyoungmin/Developments/HyoungMin/side-project/nayo/docs/recipe-tracker)
 
 ⏺ Write(docs/recipe-tracker/[harness-state.md](http://harness-state.md))
 
@@ -83,19 +83,19 @@ Apollo의 질문:
 
 ### Q2)
 
-> 그냥 매번 새로 검색하고 있어. 그리고 feature name은 moyo로 해줘. 모두의요리사 줄임말이다
+> 그냥 매번 새로 검색하고 있어. 그리고 feature name은 nayo로 해줘. 모두의요리사 줄임말이다
 
-**A)** 디렉토리 `recipe-tracker` → `moyo`로 변경. harness-state.md 갱신. 우회 수단 부재 = unmet need 강한 신호. Apollo로 전달. 다음 질문: "한 달 빈도? 검색 실패 경험?"
+**A)** 디렉토리 `recipe-tracker` → `nayo`로 변경. harness-state.md 갱신. 우회 수단 부재 = unmet need 강한 신호. Apollo로 전달. 다음 질문: "한 달 빈도? 검색 실패 경험?"
 
 ---
 
 ⏺ 피처명 변경하고 Apollo에 답변 전달하겠습니다.
 
-⏺ Bash(mv /Users/hyoungmin/Developments/HyoungMin/side-project/moyo/docs/recipe-tracker /Users/hyoungmin/Developments/HyoungMin/side-project/moyo/docs/moyo)
+⏺ Bash(mv /Users/hyoungmin/Developments/HyoungMin/side-project/nayo/docs/recipe-tracker /Users/hyoungmin/Developments/HyoungMin/side-project/nayo/docs/nayo)
 
-⏺ Update(docs/moyo/[harness-state.md](http://harness-state.md))
+⏺ Update(docs/nayo/[harness-state.md](http://harness-state.md))
 
-⏺ Write(docs/moyo/[harness-state.md](http://harness-state.md))
+⏺ Write(docs/nayo/[harness-state.md](http://harness-state.md))
 
 ⏺ aents-product-harness:Apollo(discover)(Apollo 인터뷰 답변 전달)
 
@@ -169,7 +169,7 @@ Apollo의 질문:
 
 ---
 
-moyo (모두의요리사) — 문제 정의 초안
+nayo (모두의요리사) — 문제 정의 초안
 
 JTBD
 
@@ -271,7 +271,7 @@ JTBD
 
 패치 변경점: 비-목표에서 "다중 사용자 공유" 항목만 제거. 나머지는 직전 합의안 그대로 유지.
 
-이 정정본으로 OK 하시면 docs/moyo/[problem-definition.md](http://problem-definition.md)로 저장하고 prd-writer 단계로 넘어갈 준비를 하겠습니다. 더 손볼 곳 있으면 말씀해주세요.
+이 정정본으로 OK 하시면 docs/nayo/[problem-definition.md](http://problem-definition.md)로 저장하고 prd-writer 단계로 넘어갈 준비를 하겠습니다. 더 손볼 곳 있으면 말씀해주세요.
 
 ---
 
@@ -296,11 +296,11 @@ Apollo prd-writer 첫 질문: 기록 단위? (A 메뉴/B 영상/C 둘 다)
 
 ⏺ 저장 → 상태 갱신 → prd-writer로 넘어갑니다.
 
-⏺ Write(docs/moyo/[problem-definition.md](http://problem-definition.md))
+⏺ Write(docs/nayo/[problem-definition.md](http://problem-definition.md))
 
-⏺ Write(docs/moyo/[README.md](http://README.md))
+⏺ Write(docs/nayo/[README.md](http://README.md))
 
-⏺ Update(docs/moyo/[harness-state.md](http://harness-state.md))
+⏺ Update(docs/nayo/[harness-state.md](http://harness-state.md))
 
 ⏺ aents-product-harness:Apollo(discover)(Apollo prd-writer 진입)
 
@@ -671,7 +671,7 @@ Aphrodite 첫 라운드: A1(더보기 인터랙션), A2(시도 기록 입력 UX)
 - A2 = 반응형 분기 (모바일 bottom sheet / 데스크톱 Dialog or Drawer)
 - 디자인 시스템 = Apple Web (shadcn/ui default 폐기)
 
-Apple 명세 양이 커서 별도 파일로 분리: `docs/moyo/design-system.md`. harness-state 의사결정 로그 갱신. Aphrodite로 전달, B1~B4 default 일괄 + 묶음 C(메뉴 페이지·빈 상태) 진입.
+Apple 명세 양이 커서 별도 파일로 분리: `docs/nayo/design-system.md`. harness-state 의사결정 로그 갱신. Aphrodite로 전달, B1~B4 default 일괄 + 묶음 C(메뉴 페이지·빈 상태) 진입.
 
 ---
 
@@ -819,7 +819,7 @@ friction_signals 누적 3건:
 
 ### Q28)
 
-> 이어서 git init 하고 문서 커밋해서 [git@github.com](mailto:git@github.com):hyoungqu23/moyo.git 에 push
+> 이어서 git init 하고 문서 커밋해서 [git@github.com](mailto:git@github.com):hyoungqu23/nayo.git 에 push
 
 **A)** 작업 진행:
 
@@ -827,7 +827,7 @@ friction_signals 누적 3건:
 2. `.gitignore` 작성 (`.claude/`, `node_modules/`, `.env`, `.next/`, `.vercel/` 등)
 3. 9개 파일 staging (8 docs + .gitignore)
 4. 한글 커밋 메시지로 1차 커밋
-5. `git remote add origin git@github.com:hyoungqu23/moyo.git`
+5. `git remote add origin git@github.com:hyoungqu23/nayo.git`
 6. `git push -u origin main` 시도 → **SSH 키 인증 실패**
 
 `gh auth status` 확인: hyoungqu23 계정 keyring 인증 OK (gh CLI는 SSH 프로토콜로 연결). SSH agent 키 미등록 추정. 옵션 3개(ssh-add / HTTPS+gh / 본인 직접) 제시.
@@ -841,7 +841,7 @@ friction_signals 누적 3건:
 **A)** 커밋 메시지 영문으로 amend:
 
 ```
-docs: initial commit of moyo planning and design documents
+docs: initial commit of nayo planning and design documents
 
 Phase artifacts (DISCOVER / DESIGN / ENGINEER / ALIGN):
 problem definition, PRD v0.3, design decision, design system (Apple Web),
@@ -858,7 +858,7 @@ push는 SSH 인증 옵션 결정 대기 중.
 
 > 지금까지 모든 대화 내역을 마크다운으로 나의 질문을 Q) 이렇게 작성하고, 너의 대답을 A) 이렇게 작성해줄 수 있어?
 
-**A)** 본 파일 작성. `docs/moyo/session-transcript.md`.
+**A)** 본 파일 작성. `docs/nayo/session-transcript.md`.
 
 ---
 

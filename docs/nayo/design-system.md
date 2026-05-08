@@ -1,8 +1,8 @@
-# moyo 디자인 시스템 — Apple Web Design System 차용
+# nayo 디자인 시스템 — Apple Web Design System 차용
 
 > 결정일: 2026-05-04 (Hermes L1 결정 기록 — 사용자 명시 차용)
 > 출처: Apple 공식 웹 surface(homepage / environment / store / iPhone 17 Pro buy / accessories)
-> 적용 범위: moyo 전체 UI. Tailwind CSS의 토큰 매핑 방식으로 구현.
+> 적용 범위: nayo 전체 UI. Tailwind CSS의 토큰 매핑 방식으로 구현.
 
 ---
 
@@ -296,12 +296,12 @@ The structural breakpoints that matter for agents: 1440px (content lock), 1068px
 
 ---
 
-## moyo 적용 노트
+## nayo 적용 노트
 
-- **Apple은 e-commerce 중심 시스템**, moyo는 1인 도구라 product-tile 패턴 일부는 직접 적용하지 않고 차용 원칙(low density, single accent, photography-first)만 가져온다. 영상 카드 = `store-utility-card` 변형, 시도 기록 모달 = `configurator-option-chip` 그리드 변형 등.
-- **photography-first 원칙의 moyo 해석**: 유튜브 영상 썸네일이 product render 자리에 들어간다. 영상 썸네일이 메인이고 UI는 받침대.
+- **Apple은 e-commerce 중심 시스템**, nayo는 1인 도구라 product-tile 패턴 일부는 직접 적용하지 않고 차용 원칙(low density, single accent, photography-first)만 가져온다. 영상 카드 = `store-utility-card` 변형, 시도 기록 모달 = `configurator-option-chip` 그리드 변형 등.
+- **photography-first 원칙의 nayo 해석**: 유튜브 영상 썸네일이 product render 자리에 들어간다. 영상 썸네일이 메인이고 UI는 받침대.
 - **단일 액션 컬러**: thumbs up/down 토글 활성 상태도 Action Blue (#0066cc)로 통일. 별도 색 도입 금지.
 - **`button-primary`** = thumbs up/down, 시도 기록 저장, 검색 실행 등 모든 주요 액션.
-- **dark/light 교차**: moyo는 search 위주 도구라 dark tile은 영상 상세 화면에서만 사용, 메뉴/검색 결과는 light/parchment 위주.
+- **dark/light 교차**: nayo는 search 위주 도구라 dark tile은 영상 상세 화면에서만 사용, 메뉴/검색 결과는 light/parchment 위주.
 - **모바일 퍼스트 + 반응형**: 8px base + Apple breakpoint 그대로 차용.
 - **danger 컬러 예외 (단일 추가 허용)**: Apple 시스템에 없는 `danger: rgb(220, 38, 38)` 컬러를 Tailwind 토큰으로 추가. 사용처: 영구 삭제 버튼 텍스트(`typography.caption-strong` 한정). 단일 accent 원칙 예외이나 destructive action 명확화를 위해 이 1개 컬러만 허용. 배경·border·아이콘 등 다른 요소에 확장 사용 금지. (design-decision v1.1 D2 WARN 해소 — tech-decision v2.0 §13.1)

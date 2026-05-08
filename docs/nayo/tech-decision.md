@@ -1,4 +1,4 @@
-# Tech Decision — moyo (모두의요리사)
+# Tech Decision — nayo (모두의요리사)
 
 > 버전: 2.1
 > 작성일: 2026-05-03
@@ -13,7 +13,7 @@
 
 | 항목        | 내용                                              |
 | ----------- | ------------------------------------------------- |
-| feature     | moyo (모두의요리사)                               |
+| feature     | nayo (모두의요리사)                               |
 | appetite    | Standard                                          |
 | 페이즈      | ENGINEER                                          |
 | 이전 페이즈 | DESIGN (D1-D4 전항목 PASS — design-decision v1.1) |
@@ -266,10 +266,10 @@ const stats = await db
 
 **서버 API(Drizzle direct DATABASE_URL)에서 `WHERE user_id`가 유일한 실질 보안 경계이다.**
 
-- moyo는 모든 DB 쿼리를 server-side Drizzle (`DATABASE_URL` direct connection)로 처리한다.
+- nayo는 모든 DB 쿼리를 server-side Drizzle (`DATABASE_URL` direct connection)로 처리한다.
 - Drizzle direct connection은 Supabase Auth JWT context를 자동 주입하지 않는다. 따라서 RLS `auth.uid()`는 서버 API 경로에서 작동하지 않으며 보조 방어선으로도 의존할 수 없다.
 - `SUPABASE_SERVICE_ROLE_KEY` 사용 시 RLS는 자동 bypass된다.
-- **결론**: RLS는 Supabase client를 직접 쿼리하는 경로에만 의미가 있다. moyo 서버 API 경로에서는 Drizzle `WHERE user_id = currentUser.id`가 단일 보안 경계다.
+- **결론**: RLS는 Supabase client를 직접 쿼리하는 경로에만 의미가 있다. nayo 서버 API 경로에서는 Drizzle `WHERE user_id = currentUser.id`가 단일 보안 경계다.
 - **신규 API 추가 시 필수**: 모든 신규 API Route (Steps CRUD, Attempt trash/delete/restore, Video hidden 토글, Dish delete 등) 포함 21개 전 엔드포인트에 `requireAuth()` 적용 + Drizzle 쿼리에 `eq(테이블.userId, userId)` 강제.
 
 **필수 패턴**: 모든 Drizzle 쿼리는 `eq(테이블.user_id, userId)` 형태로 user_id를 명시적으로 강제한다. 누락 방지를 위해 scoped helper 함수 도입을 권장한다.

@@ -1,7 +1,7 @@
-# harness-state.md — moyo (모두의요리사)
+# harness-state.md — nayo (모두의요리사)
 
 ## 기본 정보
-- feature_name: moyo
+- feature_name: nayo
 - feature_full_name: 모두의요리사
 - appetite: **Standard** (헤르메스 L3 자율 결정, 2026-05-04 — 사유 아래 의사결정 로그 L11 참조)
 - 시작일: 2026-05-03
@@ -25,7 +25,7 @@
 - 핵심 인사이트: 검색은 문제가 아니다. 회상 + 누적 학습 부재가 본질.
 
 ## 의사결정 로그
-- [2026-05-03 / L1] 피처명 = `moyo` (사용자 지정, 모두의요리사의 줄임말). 이전 임시명 `recipe-tracker`는 폐기.
+- [2026-05-03 / L1] 피처명 = `nayo` (사용자 지정, 모두의요리사의 줄임말). 이전 임시명 `recipe-tracker`는 폐기.
 - [2026-05-03 / L1] 문제 정의 합의 완료 — `problem-definition.md` 저장. JTBD: 이전 실패·변형 이력 기억하여 매번 더 나은 결과 만들기. 비-목표 4종 명시.
 - [2026-05-03 / L2] 데이터 모델 합의 — Dish / Video / Attempt 3-tier 구조. Video 단위 thumbs(up/down/미설정), Attempt에 rating(0~5, 0.5단위)·changes·improvement_note·tried_at.
 - [2026-05-03 / L3] MVP 스코프 확정 — (a)메뉴검색, (b)시도기록, (c)thumbs+정렬, (d-1차)description+고정댓글 원본 노출, (e)메뉴페이지. Phase 2: (d-2차)LLM요약, (f)통계.
