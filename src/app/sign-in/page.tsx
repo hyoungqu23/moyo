@@ -6,13 +6,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 function GoogleGlyph() {
   return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 18 18"
-      aria-hidden
-      className="shrink-0"
-    >
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden className="shrink-0">
       <path
         fill="#EA4335"
         d="M9 3.48c1.69 0 2.83.73 3.48 1.34l2.54-2.48C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.96l2.91 2.26C4.6 5.05 6.62 3.48 9 3.48z"
@@ -33,7 +27,19 @@ function GoogleGlyph() {
   );
 }
 
-function LoginInner() {
+function FloralRow() {
+  return (
+    <div aria-hidden className="flex items-center justify-center gap-3 text-pink-deep">
+      <span className="h-px w-8 bg-pink-deep/40" />
+      <span className="text-[14px]">✿</span>
+      <span className="text-[10px] text-mint-deep">❀</span>
+      <span className="text-[14px]">✿</span>
+      <span className="h-px w-8 bg-pink-deep/40" />
+    </div>
+  );
+}
+
+function SignInInner() {
   const params = useSearchParams();
   const next = params.get("next") ?? "/";
   const errorMsg = params.get("error");
@@ -49,54 +55,55 @@ function LoginInner() {
     });
     if (error) {
       setPending(false);
-      window.location.href = `/login?error=${encodeURIComponent(error.message)}`;
+      window.location.href = `/sign-in?error=${encodeURIComponent(error.message)}`;
     }
   }
 
   return (
     <main className="relative flex min-h-[100svh] items-center justify-center px-6">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10"
-        style={{
-          backgroundImage:
-            "radial-gradient(620px 420px at 50% 18%, rgba(194,65,12,0.06), transparent 70%)",
-        }}
-      />
-
-      <div className="w-full max-w-[360px]">
+      <div className="w-full max-w-[380px]">
         {/* Brand mark stack */}
-        <div className="mb-12 flex flex-col items-center text-center">
-          <p className="text-[16px] tracking-wide text-ink-muted">
-            나의 부엌 일지
+        <div className="mb-10 flex flex-col items-center text-center">
+          <p className="text-[12px] font-medium uppercase tracking-[0.22em] text-pink-deep">
+            Personal recipe diary
           </p>
-          <h1 className="mt-2 text-[88px] leading-[1] tracking-[-0.02em] text-ink">
+          <h1 className="font-display mt-3 text-[44px] font-medium leading-[1.05] text-ink">
             나만의 요리사
           </h1>
-          <div className="mt-6 flex items-center gap-3 text-ink-muted">
-            <span className="h-px w-10 bg-hairline-strong" />
-            <span className="text-[16px] text-persimmon">
-              {new Date().getFullYear()}년의 기록
-            </span>
-            <span className="h-px w-10 bg-hairline-strong" />
+          <div className="mt-5 w-full">
+            <FloralRow />
           </div>
-          <p className="mt-6 max-w-[300px] text-[18px] leading-relaxed text-ink-muted">
-            오늘 따라한 레시피, 내일은 무엇이 달라질까. 영상과 별점, 한 줄
-            메모로 남기는 부엌 일지.
+          <p className="mt-6 max-w-[280px] text-[14px] leading-relaxed text-ink-soft">
+            영상으로 따라한 요리, 별점과 메모로 남기는
+            <br />
+            나만의 작은 부엌 노트.
           </p>
+        </div>
+
+        {/* Tag chips — show palette character */}
+        <div className="mb-8 flex flex-wrap items-center justify-center gap-1.5">
+          <span className="rounded-full bg-pink-soft px-3 py-1 text-[12px] text-pink-ink">
+            ♥ 별점
+          </span>
+          <span className="rounded-full bg-mint-soft px-3 py-1 text-[12px] text-mint-ink">
+            ✓ 시도 기록
+          </span>
+          <span className="rounded-full bg-lavender-soft px-3 py-1 text-[12px] text-lavender-ink">
+            ✎ 메모
+          </span>
         </div>
 
         <button
           type="button"
           onClick={signInWithGoogle}
           disabled={pending}
-          className="group relative flex w-full items-center justify-center gap-3 rounded-full bg-ink py-4 text-[15px] text-paper-2 shadow-ink transition active:scale-[0.98] disabled:opacity-60"
+          className="group relative flex w-full items-center justify-center gap-3 rounded-full bg-pink-deep py-3.5 text-[15px] font-medium text-white shadow-sticker transition hover:bg-pink-ink active:scale-[0.98] disabled:opacity-60"
         >
           <GoogleGlyph />
           <span>{pending ? "이동 중…" : "Google로 시작하기"}</span>
           <span
             aria-hidden
-            className="font-mono text-[11px] text-paper-2/60 transition group-hover:translate-x-0.5"
+            className="text-[12px] text-white/70 transition group-hover:translate-x-0.5"
           >
             →
           </span>
@@ -110,21 +117,15 @@ function LoginInner() {
             {decodeURIComponent(errorMsg)}
           </p>
         ) : null}
-
-        <div className="mt-12 flex items-center justify-center gap-3 text-ink-faint">
-          <span className="h-px w-12 bg-hairline-strong" />
-          <span className="text-[14px]">허가된 이메일만 들어올 수 있어요</span>
-          <span className="h-px w-12 bg-hairline-strong" />
-        </div>
       </div>
     </main>
   );
 }
 
-export default function LoginPage() {
+export default function SignInPage() {
   return (
     <Suspense fallback={null}>
-      <LoginInner />
+      <SignInInner />
     </Suspense>
   );
 }

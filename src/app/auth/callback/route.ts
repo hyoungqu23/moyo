@@ -9,13 +9,13 @@ export async function GET(request: NextRequest) {
 
   if (errorDescription) {
     return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(errorDescription)}`, url),
+      new URL(`/sign-in?error=${encodeURIComponent(errorDescription)}`, url),
     );
   }
 
   if (!code) {
     return NextResponse.redirect(
-      new URL("/login?error=missing_code", url),
+      new URL("/sign-in?error=missing_code", url),
     );
   }
 
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(error.message)}`, url),
+      new URL(`/sign-in?error=${encodeURIComponent(error.message)}`, url),
     );
   }
 

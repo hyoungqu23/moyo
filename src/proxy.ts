@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
-const PUBLIC_PAGE_PATHS = new Set(["/login"]);
+const PUBLIC_PAGE_PATHS = new Set(["/sign-in"]);
 
 function isPublicPath(pathname: string) {
   if (pathname.startsWith("/auth/")) return true;
@@ -43,10 +43,8 @@ export async function proxy(request: NextRequest) {
 
   if (!user && !isPublicPath(pathname)) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.search = `?next=${encodeURIComponent(
-      request.nextUrl.pathname + request.nextUrl.search,
-    )}`;
+    url.pathname = "/sign-in";
+    url.search = `?next=${encodeURIComponent(request.nextUrl.pathname + request.nextUrl.search)}`;
     return NextResponse.redirect(url);
   }
 
@@ -54,7 +52,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };

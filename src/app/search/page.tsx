@@ -64,6 +64,36 @@ function useDebounced<T>(value: T, delay = 300) {
   return debounced;
 }
 
+function SectionLabel({
+  glyph,
+  glyphColor,
+  title,
+  count,
+}: {
+  glyph: string;
+  glyphColor: string;
+  title: string;
+  count?: number | null;
+}) {
+  return (
+    <div className="mb-4 flex items-end justify-between">
+      <div className="flex items-baseline gap-2">
+        <span className={`font-display text-[16px] font-medium ${glyphColor}`}>
+          {glyph}
+        </span>
+        <h2 className="font-display text-[20px] font-medium leading-none text-ink">
+          {title}
+        </h2>
+      </div>
+      {count != null ? (
+        <span className="text-[12px] font-medium text-ink-muted">
+          <span className="font-tnum">{count}</span>개
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export default function SearchPage() {
   return (
     <Suspense fallback={null}>
@@ -114,11 +144,14 @@ function SearchPageBody() {
     ? sortVideoResults(search.data.videos.map(toCard))
     : { thumbsUpSection: [], generalSection: [] };
 
+  const totalCount =
+    sorted.thumbsUpSection.length + sorted.generalSection.length;
+
   return (
-    <main className="bg-white">
-      <div className="sticky top-11 z-30 border-b border-hairline bg-parchment/80 px-8 py-4 backdrop-blur">
+    <div className="px-5 pt-5">
+      {/* Search input pinned just below header */}
+      <div className="mb-6">
         <form
-          className="mx-auto max-w-prosewide"
           onSubmit={(event) => {
             event.preventDefault();
             submit(draft);
@@ -131,16 +164,34 @@ function SearchPageBody() {
             onSelect={(option) => submit(option.label, option.id)}
           />
         </form>
+        {initialQuery ? (
+          <p className="mt-3 flex items-center gap-2 text-[12px] text-ink-muted">
+            <span aria-hidden className="text-pink-deep">
+              ✿
+            </span>
+            <span>
+              <span className="font-medium text-ink">{initialQuery}</span>
+              <span className="ml-1">검색 결과</span>
+              {search.isSuccess ? (
+                <span className="ml-1 text-ink-faint">
+                  · <span className="font-tnum">{totalCount}</span>개
+                </span>
+              ) : null}
+            </span>
+          </p>
+        ) : null}
       </div>
+
       {!initialQuery ? (
-        <EmptyState title="메뉴를 검색해보세요" />
+        <EmptyState
+          title="만들고 싶은 메뉴를 검색해보세요"
+          description="메뉴 이름을 입력하면 유튜브에서 영상을 찾아드려요."
+        />
       ) : search.isLoading ? (
-        <div className="mx-auto max-w-content px-8 py-20">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[0, 1, 2].map((index) => (
-              <Skeleton key={index} className="aspect-video" />
-            ))}
-          </div>
+        <div className="space-y-3">
+          {[0, 1, 2, 3].map((index) => (
+            <Skeleton key={index} className="h-24" />
+          ))}
         </div>
       ) : search.isError ? (
         <EmptyState
@@ -158,13 +209,16 @@ function SearchPageBody() {
         <>
           {sorted.thumbsUpSection.length > 0 ? (
             <section
-              className="mx-auto max-w-content px-8 py-20"
               aria-labelledby="liked-heading"
+              className="mb-8"
             >
-              <h1 id="liked-heading" className="mb-6 text-[21px] font-semibold">
-                내가 좋아한 영상
-              </h1>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <SectionLabel
+                glyph="♥"
+                glyphColor="text-pink-deep"
+                title="내가 좋아한 영상"
+                count={sorted.thumbsUpSection.length}
+              />
+              <div className="stagger space-y-3">
                 {sorted.thumbsUpSection.map((video) => (
                   <VideoCard
                     key={video.id}
@@ -178,37 +232,33 @@ function SearchPageBody() {
               </div>
             </section>
           ) : null}
-          <section
-            className="bg-parchment px-8 py-20"
-            aria-labelledby="latest-heading"
-          >
-            <div className="mx-auto max-w-content">
-              <h2
-                id="latest-heading"
-                className="mb-6 text-[21px] font-semibold"
-              >
-                최신순
-              </h2>
-              {sorted.generalSection.length === 0 ? (
-                <EmptyState title="이 메뉴는 아직 유튜브 결과가 없어요" />
-              ) : (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {sorted.generalSection.map((video) => (
-                    <VideoCard
-                      key={video.id}
-                      video={video}
-                      dishId={(video as { dishId?: string | null }).dishId}
-                      videoId={
-                        video.id !== video.youtubeVideoId ? video.id : null
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+
+          <section aria-labelledby="latest-heading" className="mb-8">
+            <SectionLabel
+              glyph="❀"
+              glyphColor="text-mint-deep"
+              title="최신순"
+              count={sorted.generalSection.length}
+            />
+            {sorted.generalSection.length === 0 ? (
+              <EmptyState title="이 메뉴는 아직 유튜브 결과가 없어요" />
+            ) : (
+              <div className="stagger space-y-3">
+                {sorted.generalSection.map((video) => (
+                  <VideoCard
+                    key={video.id}
+                    video={video}
+                    dishId={(video as { dishId?: string | null }).dishId}
+                    videoId={
+                      video.id !== video.youtubeVideoId ? video.id : null
+                    }
+                  />
+                ))}
+              </div>
+            )}
           </section>
         </>
       )}
-    </main>
+    </div>
   );
 }

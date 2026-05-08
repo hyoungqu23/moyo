@@ -34,25 +34,59 @@ function recentToCard(row: { video: Video; attempt: Attempt }): VideoWithStats {
   };
 }
 
+const ACCENTS: Array<{
+  bg: string;
+  border: string;
+  text: string;
+  ordinal: string;
+}> = [
+  {
+    bg: "bg-pink-soft",
+    border: "border-pink-deep/30",
+    text: "text-pink-ink",
+    ordinal: "text-pink-deep",
+  },
+  {
+    bg: "bg-mint-soft",
+    border: "border-mint-deep/30",
+    text: "text-mint-ink",
+    ordinal: "text-mint-deep",
+  },
+  {
+    bg: "bg-lavender-soft",
+    border: "border-lavender-deep/30",
+    text: "text-lavender-ink",
+    ordinal: "text-lavender-deep",
+  },
+];
+
 function SectionLabel({
   index,
   title,
   count,
+  ordinalColor = "text-pink-deep",
 }: {
   index: string;
   title: string;
   count?: number | null;
+  ordinalColor?: string;
 }) {
   return (
-    <div className="mb-3 flex items-baseline justify-between">
+    <div className="mb-4 flex items-end justify-between">
       <div className="flex items-baseline gap-2">
-        <span className="text-[18px] text-persimmon">{index}.</span>
-        <h2 className="font-display text-[28px] font-bold leading-none text-ink">
+        <span
+          className={`font-display text-[16px] font-medium ${ordinalColor}`}
+        >
+          {index}
+        </span>
+        <h2 className="font-display text-[22px] font-medium leading-none text-ink">
           {title}
         </h2>
       </div>
       {count != null ? (
-        <span className="text-[17px] text-ink-muted">{count}개</span>
+        <span className="text-[12px] font-medium text-ink-muted">
+          <span className="font-tnum">{count}</span>개
+        </span>
       ) : null}
     </div>
   );
@@ -80,11 +114,14 @@ export default function HomePage() {
   });
 
   return (
-    <div className="px-5 pt-6">
-      {/* Date strap */}
+    <div className="px-5 pt-5">
+      {/* Date strap — dotted line */}
       <div className="mb-5 flex items-center gap-3">
-        <span className="text-[15px] text-ink-muted">{today}</span>
-        <span className="h-px flex-1 bg-hairline" />
+        <span className="text-[12px] font-medium text-pink-deep">
+          오늘
+        </span>
+        <span className="text-[13px] text-ink-soft">{today}</span>
+        <span className="rule-dotted flex-1" />
       </div>
 
       {/* Search */}
@@ -107,7 +144,7 @@ export default function HomePage() {
         </div>
       ) : home.isError ? (
         <EmptyState
-          title="홈 데이터를 불러오지 못했어요"
+          title="홈을 불러오지 못했어요"
           action={{ href: "/", label: "다시 시도" }}
         />
       ) : home.data?.empty ? (
@@ -120,9 +157,10 @@ export default function HomePage() {
         <>
           <section aria-labelledby="recent-heading" className="mb-10">
             <SectionLabel
-              index="01"
+              index="✿ 1"
               title="최근 시도한 영상"
               count={home.data?.recentAttempts.length ?? 0}
+              ordinalColor="text-pink-deep"
             />
             <div className="stagger space-y-3">
               {(home.data?.recentAttempts ?? []).map((row) => (
@@ -138,24 +176,34 @@ export default function HomePage() {
 
           <section aria-labelledby="top-dishes-heading" className="mb-10">
             <SectionLabel
-              index="02"
+              index="❀ 2"
               title="자주 만든 메뉴"
               count={home.data?.topDishes.length ?? 0}
+              ordinalColor="text-mint-deep"
             />
             {home.data?.topDishes.length ? (
               <div className="flex flex-wrap gap-2">
-                {home.data.topDishes.map(({ dish, attemptCount }) => (
-                  <Link
-                    key={dish.id}
-                    href={`/dish/${dish.slug}`}
-                    className="group inline-flex items-center gap-2 rounded-full border border-hairline bg-paper-2 px-4 py-1.5 text-[16px] text-ink transition hover:border-ink"
-                  >
-                    <span>{dish.name}</span>
-                    <span className="text-[14px] text-ink-muted group-hover:text-ink">
-                      {attemptCount}번
-                    </span>
-                  </Link>
-                ))}
+                {home.data.topDishes.map(({ dish, attemptCount }, i) => {
+                  const accent = ACCENTS[i % ACCENTS.length];
+                  return (
+                    <Link
+                      key={dish.id}
+                      href={`/dish/${dish.slug}`}
+                      className={`group inline-flex items-center gap-2 rounded-full border ${accent.border} ${accent.bg} ${accent.text} px-3.5 py-1.5 text-[13px] font-medium transition hover:-translate-y-0.5 hover:shadow-soft`}
+                    >
+                      <span aria-hidden className={accent.ordinal}>
+                        〔
+                      </span>
+                      <span>{dish.name}</span>
+                      <span className="font-tnum text-[12px] opacity-70">
+                        {attemptCount}번
+                      </span>
+                      <span aria-hidden className={accent.ordinal}>
+                        〕
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
             ) : (
               <p className="text-[13px] text-ink-muted">
