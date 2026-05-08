@@ -6,6 +6,7 @@ export type ComboOption = { id: string; label: string };
 
 export function Combobox({
   label,
+  name,
   options,
   placeholder,
   value: controlledValue,
@@ -13,6 +14,7 @@ export function Combobox({
   onSelect,
 }: {
   label: string;
+  name?: string;
   options: ComboOption[];
   placeholder?: string;
   value?: string;
@@ -47,6 +49,7 @@ export function Combobox({
     <div className="relative w-full">
       <input
         role="combobox"
+        name={name}
         aria-label={label}
         aria-expanded={open && filtered.length > 0}
         aria-controls={listboxId}

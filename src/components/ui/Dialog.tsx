@@ -11,7 +11,8 @@ function focusables(container: HTMLElement) {
   ).filter(
     (element) =>
       !element.hasAttribute("disabled") &&
-      element.getAttribute("aria-disabled") !== "true",
+      element.getAttribute("aria-disabled") !== "true" &&
+      !element.hasAttribute("data-autofocus-skip"),
   );
 }
 
@@ -34,8 +35,7 @@ export function Dialog({
 
   useEffect(() => {
     if (!open || !panelRef.current) return;
-    const first = focusables(panelRef.current)[0];
-    first?.focus();
+    focusables(panelRef.current)[0]?.focus();
   }, [open]);
 
   if (!open) return null;
@@ -47,7 +47,7 @@ export function Dialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-5"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/25 p-5 backdrop-blur-[1px]"
       onMouseDown={close}
     >
       <div
@@ -55,7 +55,7 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-lg bg-white p-6 transition duration-200"
+        className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-lg border border-hairline bg-ivory-soft shadow-sticker"
         onMouseDown={(event) => event.stopPropagation()}
         onKeyDown={(event) => {
           if (event.key === "Escape") close();
@@ -73,10 +73,30 @@ export function Dialog({
           }
         }}
       >
-        <h2 id={titleId} className="mb-5 text-[21px] font-semibold">
-          {title}
-        </h2>
-        {children}
+        <div className="flex items-center justify-between gap-3 border-b border-hairline px-5 py-4">
+          <h2
+            id={titleId}
+            className="font-display text-[18px] font-medium leading-none text-ink"
+          >
+            <span aria-hidden className="mr-1.5 text-pink-deep">
+              ✎
+            </span>
+            {title}
+          </h2>
+          <button
+            type="button"
+            aria-label="닫기"
+            data-autofocus-skip
+            onClick={close}
+            className="grid h-8 w-8 place-items-center rounded-full text-ink-muted transition hover:bg-pink-soft hover:text-ink active:scale-95"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col px-5 pt-4 pb-5">
+          {children}
+        </div>
       </div>
     </div>
   );
