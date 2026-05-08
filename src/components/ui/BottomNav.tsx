@@ -101,13 +101,10 @@ const ICONS: Record<string, (props: { active: boolean }) => React.ReactNode> = {
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
   return (
-    <nav
-      aria-label="주요 메뉴"
-      className="sticky bottom-0 z-30 mt-auto"
-    >
-      <div className="rule-perforation" />
+    <nav aria-label="주요 메뉴" className="sticky bottom-0 z-30 mt-auto">
+      <div className="rule-dotted" />
       <div
-        className="bg-paper/92 backdrop-blur-md"
+        className="bg-ivory/92 backdrop-blur-md"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0)" }}
       >
         <ul className="mx-auto flex max-w-content items-stretch justify-around px-2">
@@ -121,31 +118,29 @@ export function BottomNav() {
                   aria-current={active ? "page" : undefined}
                   className={clsx(
                     "group relative flex h-16 flex-col items-center justify-center gap-1 transition",
-                    active ? "text-ink" : "text-ink-faint hover:text-ink-muted",
+                    active
+                      ? "text-pink-deep"
+                      : "text-ink-faint hover:text-ink-muted",
                   )}
                 >
                   <span
                     className={clsx(
                       "transition",
-                      active ? "translate-y-0" : "translate-y-[1px]",
+                      active ? "-translate-y-px" : "translate-y-[1px]",
                     )}
                   >
                     {Icon ? <Icon active={active} /> : null}
                   </span>
                   <span
                     className={clsx(
-                      "text-[14px] leading-none transition-all duration-200",
-                      active ? "tracking-wider" : "tracking-normal",
+                      "text-[12px] leading-none transition-all duration-200",
+                      active
+                        ? "font-semibold"
+                        : "font-normal",
                     )}
                   >
                     {tab.label}
                   </span>
-                  {active ? (
-                    <span
-                      aria-hidden
-                      className="absolute -bottom-px h-px w-8 bg-ink"
-                    />
-                  ) : null}
                 </Link>
               </li>
             );

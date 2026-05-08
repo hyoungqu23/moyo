@@ -17,9 +17,16 @@ function formatDate(input: string | Date | null | undefined): string | null {
   return `${m}월 ${day}일`;
 }
 
-function Stars({ value }: { value: number | null }) {
+function Hearts({ value }: { value: number | null }) {
   if (value == null) {
-    return <span className="text-[14px] text-ink-faint">아직 평가 전</span>;
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-faint">
+        <span aria-hidden className="text-pink/70 tracking-tight">
+          ♡♡♡♡♡
+        </span>
+        <span>아직 평가 전</span>
+      </span>
+    );
   }
   const filled = Math.round(value);
   return (
@@ -27,11 +34,13 @@ function Stars({ value }: { value: number | null }) {
       aria-label={`평균 ${value.toFixed(1)}점`}
       className="inline-flex items-center gap-1.5"
     >
-      <span className="text-[15px] leading-none tracking-wider text-persimmon">
-        {"★".repeat(filled)}
-        <span className="text-ink-faint">{"★".repeat(5 - filled)}</span>
+      <span aria-hidden className="text-[14px] tracking-tight">
+        <span className="text-pink-deep">{"♥".repeat(filled)}</span>
+        <span className="text-pink/70">{"♡".repeat(5 - filled)}</span>
       </span>
-      <span className="text-[14px] text-ink-muted">{value.toFixed(1)}</span>
+      <span className="font-tnum text-[12px] font-medium text-pink-ink">
+        {value.toFixed(1)}
+      </span>
     </span>
   );
 }
@@ -58,8 +67,8 @@ export function VideoCard({ video, dishId, videoId }: VideoCardProps) {
     >
       <article
         className={clsx(
-          "relative overflow-hidden rounded-md border border-hairline bg-paper-2 p-3 transition",
-          "group-hover:border-hairline-strong group-hover:-translate-y-px",
+          "relative overflow-hidden rounded-md border border-hairline bg-ivory-soft p-3 shadow-soft transition",
+          "group-hover:-translate-y-0.5 group-hover:shadow-sticker",
           muted && "opacity-50",
         )}
       >
@@ -80,23 +89,35 @@ export function VideoCard({ video, dishId, videoId }: VideoCardProps) {
           </div>
 
           <div className="min-w-0 flex-1">
-            <h3 className="line-clamp-2 text-[17px] leading-snug text-ink">
-              {video.title}
-            </h3>
-            <p className="mt-1 truncate text-[14px] text-ink-muted">
+            <div className="flex items-start gap-1.5">
+              <span
+                aria-hidden
+                className="mt-1 text-[12px] leading-none text-pink-deep"
+              >
+                ⊹
+              </span>
+              <h3 className="line-clamp-2 text-[15px] font-medium leading-snug text-ink">
+                {video.title}
+              </h3>
+            </div>
+            <p className="mt-1 truncate pl-[18px] text-[12px] text-ink-muted">
               {video.channel}
             </p>
 
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <Stars value={video.averageRating} />
-              <span className="text-[13px] text-ink-muted">
-                {lastTried ?? "—"}
-                {video.attemptCount > 0 ? (
-                  <span className="ml-2 text-ink-faint">
-                    {video.attemptCount}번
-                  </span>
-                ) : null}
-              </span>
+            <div className="mt-2 flex items-center justify-between gap-2 pl-[18px]">
+              <Hearts value={video.averageRating} />
+              {lastTried || video.attemptCount > 0 ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-mint-soft px-2 py-0.5 text-[11px] text-mint-ink">
+                  {lastTried ? (
+                    <span className="font-tnum">{lastTried}</span>
+                  ) : null}
+                  {video.attemptCount > 0 ? (
+                    <span className="text-mint-deep">
+                      {lastTried ? "·" : null} {video.attemptCount}번
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
             </div>
           </div>
         </div>

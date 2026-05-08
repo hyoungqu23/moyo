@@ -1,15 +1,8 @@
-import { Gowun_Batang, Nanum_Brush_Script } from "next/font/google";
+import { Gowun_Dodum } from "next/font/google";
 
-export const nanumBrush = Nanum_Brush_Script({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-brush",
-  weight: ["400"],
-});
-
-export const gowunBatang = Gowun_Batang({
+export const gowunDodum = Gowun_Dodum({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-gowun",
-  weight: ["400", "700"],
+  weight: ["400"],
 });
