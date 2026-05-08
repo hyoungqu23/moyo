@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Attempt, Dish, Video } from "@/db/schema";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -26,11 +27,35 @@ function recentToCard(row: { video: Video; attempt: Attempt }): VideoWithStats {
     publishedAt: row.video.publishedAt ?? null,
     thumbs: (row.video.thumbs as VideoWithStats["thumbs"]) ?? null,
     averageRating: null,
-    attemptCount: 0,
+    attemptCount: 1,
     lastTriedAt: row.attempt.triedAt,
     isHidden: row.video.isHidden,
     isUnavailableOnYoutube: row.video.isUnavailableOnYoutube,
   };
+}
+
+function SectionLabel({
+  index,
+  title,
+  count,
+}: {
+  index: string;
+  title: string;
+  count?: number | null;
+}) {
+  return (
+    <div className="mb-3 flex items-baseline justify-between">
+      <div className="flex items-baseline gap-2">
+        <span className="text-[18px] text-persimmon">{index}.</span>
+        <h2 className="font-display text-[28px] font-bold leading-none text-ink">
+          {title}
+        </h2>
+      </div>
+      {count != null ? (
+        <span className="text-[17px] text-ink-muted">{count}개</span>
+      ) : null}
+    </div>
+  );
 }
 
 export default function HomePage() {
@@ -48,89 +73,98 @@ export default function HomePage() {
     label: dish.name,
   }));
 
+  const today = new Date().toLocaleDateString("ko-KR", {
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  });
+
   return (
-    <main className="bg-parchment">
-      <section className="mx-auto max-w-content px-8 py-20">
-        <div className="mx-auto max-w-prosewide">
-          <SearchInput
-            options={dishOptions}
-            onSelect={(option) => {
-              router.push(
-                `/search?q=${encodeURIComponent(option.label)}&dish_id=${option.id}`,
-              );
-            }}
-          />
+    <div className="px-5 pt-6">
+      {/* Date strap */}
+      <div className="mb-5 flex items-center gap-3">
+        <span className="text-[15px] text-ink-muted">{today}</span>
+        <span className="h-px flex-1 bg-hairline" />
+      </div>
+
+      {/* Search */}
+      <div className="mb-8">
+        <SearchInput
+          options={dishOptions}
+          onSelect={(option) => {
+            router.push(
+              `/search?q=${encodeURIComponent(option.label)}&dish_id=${option.id}`,
+            );
+          }}
+        />
+      </div>
+
+      {home.isLoading ? (
+        <div className="space-y-3">
+          {[0, 1, 2].map((index) => (
+            <Skeleton key={index} className="h-24" />
+          ))}
         </div>
-        {home.isLoading ? (
-          <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[0, 1, 2].map((index) => (
-              <Skeleton key={index} className="aspect-video" />
-            ))}
-          </div>
-        ) : home.isError ? (
-          <EmptyState
-            title="홈 데이터를 불러오지 못했어요"
-            action={{ href: "/", label: "다시 시도" }}
-          />
-        ) : home.data?.empty ? (
-          <EmptyState
-            title="메뉴를 검색해 시작해보세요"
-            action={{ href: "/search", label: "메뉴 검색하기" }}
-          />
-        ) : (
-          <div className="mt-16 grid gap-16">
-            <section aria-labelledby="recent-heading">
-              <h1
-                id="recent-heading"
-                className="mb-6 text-[21px] font-semibold"
-              >
-                최근 시도한 영상
-              </h1>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {(home.data?.recentAttempts ?? []).map((row) => (
-                  <VideoCard
-                    key={row.attempt.id}
-                    video={recentToCard(row)}
-                    dishId={row.video.dishId}
-                    videoId={row.video.id}
-                  />
+      ) : home.isError ? (
+        <EmptyState
+          title="홈 데이터를 불러오지 못했어요"
+          action={{ href: "/", label: "다시 시도" }}
+        />
+      ) : home.data?.empty ? (
+        <EmptyState
+          title="첫 페이지를 펼쳐 볼까요"
+          description="만들어 보고 싶은 메뉴부터 검색해 보세요."
+          action={{ href: "/search", label: "메뉴 검색하기" }}
+        />
+      ) : (
+        <>
+          <section aria-labelledby="recent-heading" className="mb-10">
+            <SectionLabel
+              index="01"
+              title="최근 시도한 영상"
+              count={home.data?.recentAttempts.length ?? 0}
+            />
+            <div className="stagger space-y-3">
+              {(home.data?.recentAttempts ?? []).map((row) => (
+                <VideoCard
+                  key={row.attempt.id}
+                  video={recentToCard(row)}
+                  dishId={row.video.dishId}
+                  videoId={row.video.id}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section aria-labelledby="top-dishes-heading" className="mb-10">
+            <SectionLabel
+              index="02"
+              title="자주 만든 메뉴"
+              count={home.data?.topDishes.length ?? 0}
+            />
+            {home.data?.topDishes.length ? (
+              <div className="flex flex-wrap gap-2">
+                {home.data.topDishes.map(({ dish, attemptCount }) => (
+                  <Link
+                    key={dish.id}
+                    href={`/dish/${dish.slug}`}
+                    className="group inline-flex items-center gap-2 rounded-full border border-hairline bg-paper-2 px-4 py-1.5 text-[16px] text-ink transition hover:border-ink"
+                  >
+                    <span>{dish.name}</span>
+                    <span className="text-[14px] text-ink-muted group-hover:text-ink">
+                      {attemptCount}번
+                    </span>
+                  </Link>
                 ))}
               </div>
-            </section>
-            <section
-              aria-labelledby="top-dishes-heading"
-              className="bg-white px-6 py-10"
-            >
-              <h2
-                id="top-dishes-heading"
-                className="mb-5 text-[21px] font-semibold"
-              >
-                자주 만든 메뉴
-              </h2>
-              {home.data?.topDishes.length ? (
-                <div className="flex flex-wrap gap-2">
-                  {home.data.topDishes.map(({ dish, attemptCount }) => (
-                    <a
-                      key={dish.id}
-                      href={`/dish/${dish.slug}`}
-                      className="rounded-full border border-hairline bg-white px-4 py-3 text-sm"
-                    >
-                      {dish.name}
-                      <span className="ml-2 text-ink-muted">
-                        {attemptCount}회
-                      </span>
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-ink-muted">
-                  아직 자주 만든 메뉴가 없어요.
-                </p>
-              )}
-            </section>
-          </div>
-        )}
-      </section>
-    </main>
+            ) : (
+              <p className="text-[13px] text-ink-muted">
+                아직 자주 만든 메뉴가 없어요.
+              </p>
+            )}
+          </section>
+        </>
+      )}
+    </div>
   );
 }
