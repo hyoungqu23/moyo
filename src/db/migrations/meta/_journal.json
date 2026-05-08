@@ -15,6 +15,13 @@
       "when": 1778195978878,
       "tag": "0001_melted_sebastian_shaw",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778216344815,
+      "tag": "0002_handy_drax",
+      "breakpoints": true
     }
   ]
 }

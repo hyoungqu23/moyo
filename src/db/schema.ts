@@ -13,15 +13,6 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-export const allowedUsers = pgTable("allowed_users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  email: varchar("email", { length: 320 }).notNull().unique(),
-  role: varchar("role", { length: 50 }).notNull().default("user"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
-
 export const dishes = pgTable(
   "dishes",
   {
