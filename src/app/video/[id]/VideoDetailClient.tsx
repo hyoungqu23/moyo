@@ -3,12 +3,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { useForm, useFieldArray, type SubmitHandler } from "react-hook-form";
+import {
+  Controller,
+  useFieldArray,
+  useForm,
+  type SubmitHandler,
+} from "react-hook-form";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { StarRating } from "@/components/ui/StarRating";
 import { Toast } from "@/components/ui/Toast";
 import { ToggleGroup } from "@/components/ui/ToggleGroup";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -16,7 +22,7 @@ import { apiFetch } from "@/lib/api";
 import { attemptInputSchema, type stepInputSchema } from "@/lib/validators";
 import { loadYouTubeIframeApi, type YouTubePlayer } from "@/lib/youtube-iframe";
 import type { ThumbState } from "@/lib/sort-videos";
-import type { Attempt, Video } from "@/db/schema";
+import type { Attempt, Dish, Step, Video } from "@/db/schema";
 import type { z } from "zod";
 
 type YoutubeVideoResponse = {
@@ -70,9 +76,20 @@ function resolveStepSeconds(value: {
 
 export function VideoDetailClient({ id }: { id: string }) {
   const searchParams = useSearchParams();
-  const dishId = searchParams.get("dish_id");
-  const videoId = searchParams.get("video_id"); // Video UUID — thumbs 실호출 대상 (L48)
+  const initialDishId = searchParams.get("dish_id");
+  const initialVideoRecordId = searchParams.get("video_id"); // Video UUID
+  const pendingDishName = searchParams.get("q"); // dish name to lazy-create
   const queryClient = useQueryClient();
+
+  // Resolved ids cached locally so that lazy creation only runs once.
+  // Either pre-populated from the URL (existing dish/video) or filled in
+  // when the user takes a meaningful action (save attempt or thumbs).
+  const [resolvedDishId, setResolvedDishId] = useState<string | null>(
+    initialDishId,
+  );
+  const [resolvedVideoRecordId, setResolvedVideoRecordId] = useState<
+    string | null
+  >(initialVideoRecordId);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const playerHostRef = useRef<HTMLDivElement>(null);
@@ -89,8 +106,22 @@ export function VideoDetailClient({ id }: { id: string }) {
     queryFn: () => apiFetch<YoutubeVideoResponse>(`/api/youtube/video/${id}`),
   });
 
+  // Attempts list for this video record. Only enabled once the video has
+  // been ensured (i.e., the user has already saved or thumbed it at least
+  // once, or arrived with a video_id from elsewhere).
+  const attempts = useQuery({
+    queryKey: ["videos", resolvedVideoRecordId, "attempts"],
+    queryFn: () =>
+      apiFetch<{
+        attempts: Array<{ attempt: Attempt; steps: Step[] }>;
+      }>(`/api/videos/${resolvedVideoRecordId}/attempts`),
+    enabled: !!resolvedVideoRecordId,
+  });
+
   const embeddable =
-    detail.data?.embeddable !== false && !detail.data?.unavailable;
+    !!detail.data &&
+    detail.data.embeddable !== false &&
+    !detail.data.unavailable;
 
   useEffect(() => {
     if (!embeddable) return;
@@ -101,6 +132,9 @@ export function VideoDetailClient({ id }: { id: string }) {
         if (!active || !playerHostRef.current) return;
         playerRef.current = new YT.Player(playerHostRef.current, {
           videoId: id,
+          width: "100%",
+          height: "100%",
+          playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
           events: {
             onReady: () => setEmbedReady(true),
             onError: () => setEmbedReady(false),
@@ -133,10 +167,42 @@ export function VideoDetailClient({ id }: { id: string }) {
   });
   const stepFields = useFieldArray({ control: form.control, name: "steps" });
 
-  const upsertVideo = async (): Promise<Video> => {
-    if (!dishId) throw new Error("메뉴를 먼저 선택해주세요");
+  // Find or create a dish for the pending name. Idempotent on the server's
+  // unique-by-name behaviour at the application layer.
+  const ensureDish = async (rawName: string): Promise<string> => {
+    const name = rawName.trim();
+    if (!name) throw new Error("메뉴 이름이 비어 있어요");
+    const { dishes } = await apiFetch<{ dishes: Dish[] }>(
+      `/api/dishes/autocomplete?q=${encodeURIComponent(name)}`,
+    );
+    const exact = dishes.find((d) => d.name.trim() === name);
+    if (exact) return exact.id;
+    const { dish } = await apiFetch<{ dish: Dish }>("/api/dishes", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
+    queryClient.invalidateQueries({ queryKey: ["dishes"] });
+    return dish.id;
+  };
+
+  // Resolve dish_id + video record id, creating both if missing. Called by
+  // the first meaningful action (attempt save or thumbs toggle) to lazily
+  // commit a "real" dish/video to the database.
+  const ensureVideoRecord = async (): Promise<{
+    dishId: string;
+    videoRecordId: string;
+  }> => {
+    let actualDishId = resolvedDishId;
+    if (!actualDishId) {
+      if (!pendingDishName) {
+        throw new Error("메뉴 정보가 없어요. 검색 화면에서 다시 진입해주세요.");
+      }
+      actualDishId = await ensureDish(pendingDishName);
+      setResolvedDishId(actualDishId);
+    }
+
     const payload = {
-      dishId,
+      dishId: actualDishId,
       youtubeVideoId: id,
       title: detail.data?.title ?? id,
       channel: detail.data?.channel ?? "",
@@ -147,12 +213,15 @@ export function VideoDetailClient({ id }: { id: string }) {
       method: "POST",
       body: JSON.stringify(payload),
     });
-    return video;
+    if (resolvedVideoRecordId !== video.id) {
+      setResolvedVideoRecordId(video.id);
+    }
+    return { dishId: actualDishId, videoRecordId: video.id };
   };
 
   const submitAttempt = useMutation({
     mutationFn: async (values: AttemptFormValues) => {
-      const video = await upsertVideo();
+      const { videoRecordId } = await ensureVideoRecord();
       const stepsParsed: StepInput[] = values.steps
         .filter((step) => step.note.trim().length > 0)
         .map((step) => ({
@@ -160,7 +229,7 @@ export function VideoDetailClient({ id }: { id: string }) {
           videoTimestamp: resolveStepSeconds(step),
         }));
       const parsed = attemptInputSchema.parse({
-        videoId: video.id,
+        videoId: videoRecordId,
         rating: values.rating,
         changes: values.changes || undefined,
         improvementNote: values.improvementNote || undefined,
@@ -187,26 +256,42 @@ export function VideoDetailClient({ id }: { id: string }) {
         steps: [],
       });
       queryClient.invalidateQueries({ queryKey: ["home"] });
+      queryClient.invalidateQueries({ queryKey: ["dishes"] });
+      // Refresh this video's attempts list so the UI shows the new entry.
+      queryClient.invalidateQueries({
+        queryKey: ["videos", resolvedVideoRecordId, "attempts"],
+      });
     },
-    onError: (error: Error) =>
-      setToast(error.message ?? "저장 중 오류가 발생했습니다"),
+    onError: (error: Error) => {
+      // Surface the underlying problem in the dev console so users can debug.
+      console.error("[attempt save] failed", error);
+      setToast(error.message ?? "저장 중 오류가 발생했습니다");
+    },
   });
 
-  const onSubmit: SubmitHandler<AttemptFormValues> = (values) =>
+  const onSubmit: SubmitHandler<AttemptFormValues> = (values) => {
     submitAttempt.mutate(values);
+  };
 
-  // thumbs 토글 — videoId(URL param)가 있을 때 PATCH /api/videos/{videoId}/thumbs 실호출 (L48).
-  // videoId 없는 경우(직접 URL 진입)는 낙관적 UI만 변경하고 서버 호출 없음.
+  const onInvalid = (errors: unknown) => {
+    console.warn("[attempt save] form invalid", errors);
+    setToast("입력값을 다시 확인해주세요");
+  };
+
+  // thumbs 토글 — 첫 클릭 시 dish + video를 lazy-create한 뒤 PATCH.
+  // 의도된 평가 행위라 dish 생성을 정당화한다 (단순 검색만으로는 안 만듦).
   const thumbsMutation = useMutation({
     mutationFn: async (next: ThumbState) => {
-      if (!videoId) return; // video_id 없으면 실호출 생략
-      await apiFetch(`/api/videos/${videoId}/thumbs`, {
+      const { videoRecordId } = await ensureVideoRecord();
+      await apiFetch(`/api/videos/${videoRecordId}/thumbs`, {
         method: "PATCH",
         body: JSON.stringify({ thumbs: next }),
       });
     },
-    onError: (error: Error) =>
-      setToast(error.message ?? "thumbs 저장 중 오류가 발생했습니다"),
+    onError: (error: Error) => {
+      console.error("[thumbs] failed", error);
+      setToast(error.message ?? "평가 저장 중 오류가 발생했어요");
+    },
   });
 
   const handleThumbsChange = (next: ThumbState) => {
@@ -228,24 +313,44 @@ export function VideoDetailClient({ id }: { id: string }) {
   const labelClass = "grid gap-1.5 text-[13px] font-medium text-ink-soft";
 
   const formContent = (
-    <form className="grid gap-4" onSubmit={form.handleSubmit(onSubmit)}>
-      {!dishId ? (
-        <p className="rounded-md bg-lavender-soft px-3 py-2.5 text-[12px] text-lavender-ink">
-          ✎ 기록을 저장하려면 검색 화면에서 메뉴를 선택해 진입해주세요.
-        </p>
-      ) : null}
-      <label className={labelClass}>
-        평점 (0~5, 0.5 단위)
-        <input
-          type="number"
-          step={0.5}
-          min={0}
-          max={5}
-          aria-required="true"
-          className={inputClass}
-          {...form.register("rating", { valueAsNumber: true })}
+    <form
+      className="flex max-h-full min-h-0 flex-col"
+      onSubmit={form.handleSubmit(onSubmit, onInvalid)}
+    >
+      {/* Scrollable middle */}
+      <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto pb-4 pr-1">
+        {!resolvedDishId && pendingDishName ? (
+          <div className="rounded-md border border-mint-deep/30 bg-mint-soft px-3 py-2.5 text-[12px] text-mint-ink">
+            <p className="font-medium">
+              ✿ 저장하면 메뉴 「{pendingDishName}」가 새로 만들어져요
+            </p>
+            <p className="mt-0.5 text-[11.5px] leading-relaxed">
+              평가나 기록 없이 그냥 둘러볼 때는 만들어지지 않습니다.
+            </p>
+          </div>
+        ) : !resolvedDishId ? (
+          <div className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2.5 text-[12px] text-danger">
+            <p className="font-medium">메뉴 정보가 없어요</p>
+            <p className="mt-0.5 text-[11.5px] leading-relaxed">
+              검색 화면에서 다시 진입해주세요.
+            </p>
+          </div>
+        ) : null}
+      <div className={labelClass}>
+        <span>평점</span>
+        <Controller
+          control={form.control}
+          name="rating"
+          render={({ field }) => (
+            <div className="rounded-md border border-hairline bg-ivory-soft px-4 py-3">
+              <StarRating value={field.value} onChange={field.onChange} />
+              <p className="mt-1 text-[11px] text-ink-faint">
+                하트를 눌러 평점을 매겨주세요. 왼쪽 절반은 반점.
+              </p>
+            </div>
+          )}
         />
-      </label>
+      </div>
       <label className={labelClass}>
         <span aria-hidden="true">시도 날짜 *</span>
         <input
@@ -333,9 +438,18 @@ export function VideoDetailClient({ id }: { id: string }) {
           + 단계 추가
         </Button>
       </div>
-      <Button type="submit" disabled={submitAttempt.isPending || !dishId}>
-        {submitAttempt.isPending ? "저장 중…" : "저장하기"}
-      </Button>
+      </div>
+
+      {/* Sticky footer — always visible, never blocked by scroll */}
+      <div className="-mx-5 -mb-5 mt-3 border-t border-hairline bg-ivory-soft px-5 py-3">
+        <Button
+          type="submit"
+          disabled={submitAttempt.isPending}
+          className="w-full"
+        >
+          {submitAttempt.isPending ? "저장 중…" : "저장하기"}
+        </Button>
+      </div>
     </form>
   );
 
@@ -368,6 +482,15 @@ export function VideoDetailClient({ id }: { id: string }) {
           {detail.data?.title ?? "영상 상세"}
         </h1>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {(resolvedDishId || pendingDishName) && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-pink-soft px-2.5 py-0.5 text-[12px] text-pink-ink">
+              <span aria-hidden>✿</span>
+              {pendingDishName ?? "메뉴"}
+              {resolvedDishId ? null : (
+                <span className="text-pink-deep/70">· 평가 시 생성</span>
+              )}
+            </span>
+          )}
           {detail.data?.channel ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-mint-soft px-2.5 py-0.5 text-[12px] text-mint-ink">
               <span aria-hidden>✎</span>
@@ -399,7 +522,108 @@ export function VideoDetailClient({ id }: { id: string }) {
         <ToggleGroup value={thumbs} onChange={handleThumbsChange} />
       </div>
 
-      {/* Description */}
+      {/* Attempt record section — kept high so 기록하기 stays within thumb-reach */}
+      <section aria-labelledby="attempt-heading" className="mb-8">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[12px] font-medium text-lavender-deep">
+              ✎ 기록
+            </p>
+            <h2
+              id="attempt-heading"
+              className="font-display text-[20px] font-medium leading-tight text-ink"
+            >
+              내 시도 기록
+              {attempts.data && attempts.data.attempts.length > 0 ? (
+                <span className="ml-2 text-[14px] font-medium text-ink-muted">
+                  <span className="font-tnum">
+                    {attempts.data.attempts.length}
+                  </span>
+                  번
+                </span>
+              ) : null}
+            </h2>
+          </div>
+          <Button ref={triggerRef} onClick={() => setOpen(true)}>
+            + 기록하기
+          </Button>
+        </div>
+        {!resolvedVideoRecordId || attempts.isLoading ? null : attempts.data &&
+          attempts.data.attempts.length > 0 ? (
+          <ul className="stagger space-y-3" role="list">
+            {attempts.data.attempts.map(({ attempt, steps: stepRows }) => {
+              const ratingNum = Number(attempt.rating ?? 0);
+              const filled = Math.max(0, Math.min(5, Math.round(ratingNum)));
+              const tried = (() => {
+                const d = new Date(attempt.triedAt);
+                if (Number.isNaN(d.getTime())) return null;
+                return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+              })();
+              return (
+                <li
+                  key={attempt.id}
+                  className="rounded-md border border-hairline bg-ivory-soft p-3 shadow-soft"
+                  role="listitem"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          aria-label={`별점 ${ratingNum.toFixed(1)}점`}
+                          className="text-[14px] tracking-tight"
+                        >
+                          <span className="text-pink-deep">
+                            {"♥".repeat(filled)}
+                          </span>
+                          <span className="text-pink/60">
+                            {"♡".repeat(5 - filled)}
+                          </span>
+                        </span>
+                        <span className="font-tnum text-[13px] font-medium text-pink-ink">
+                          {ratingNum.toFixed(1)}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                        {tried ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-mint-soft px-2 py-0.5 text-mint-ink">
+                            <span aria-hidden>✓</span>
+                            <span className="font-tnum">{tried}</span>
+                          </span>
+                        ) : null}
+                        {stepRows.length > 0 ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-lavender-soft px-2 py-0.5 text-lavender-ink">
+                            <span aria-hidden>✎</span>
+                            단계{" "}
+                            <span className="font-tnum">{stepRows.length}</span>
+                          </span>
+                        ) : null}
+                      </div>
+                      {attempt.changes ? (
+                        <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">
+                          {attempt.changes}
+                        </p>
+                      ) : null}
+                      {attempt.improvementNote ? (
+                        <p className="mt-1 text-[12px] leading-relaxed text-ink-muted">
+                          <span className="text-pink-deep">→</span>{" "}
+                          {attempt.improvementNote}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <EmptyState
+            title="아직 시도 기록이 없어요"
+            description="이 영상으로 만들어 본 적이 있다면 기록해 두세요."
+          />
+        )}
+      </section>
+
+      {/* Description — reference info, kept below the action area */}
       {detail.isLoading ? (
         <Skeleton className="mb-6 h-32" />
       ) : description ? (
@@ -435,30 +659,6 @@ export function VideoDetailClient({ id }: { id: string }) {
           </p>
         </section>
       ) : null}
-
-      {/* Attempt record section */}
-      <section aria-labelledby="attempt-heading" className="mb-8">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[12px] font-medium text-lavender-deep">
-              ✎ 기록
-            </p>
-            <h2
-              id="attempt-heading"
-              className="font-display text-[20px] font-medium leading-tight text-ink"
-            >
-              내 시도 기록
-            </h2>
-          </div>
-          <Button ref={triggerRef} onClick={() => setOpen(true)}>
-            + 기록하기
-          </Button>
-        </div>
-        <EmptyState
-          title="아직 시도 기록이 없어요"
-          description="이 영상으로 만들어 본 적이 있다면 기록해 두세요."
-        />
-      </section>
 
       {open ? (
         isDesktop ? (

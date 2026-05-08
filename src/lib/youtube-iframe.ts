@@ -5,6 +5,13 @@ type IframeNamespace = {
     element: string | HTMLElement,
     options: {
       videoId: string;
+      width?: string | number;
+      height?: string | number;
+      playerVars?: {
+        playsinline?: 0 | 1;
+        rel?: 0 | 1;
+        modestbranding?: 0 | 1;
+      };
       events?: {
         onReady?: (event: { target: YouTubePlayer }) => void;
         onError?: (event: { data: number }) => void;
