@@ -6,6 +6,12 @@ type VideoCardProps = {
   video: VideoWithStats;
   dishId?: string | null;
   videoId?: string | null;
+  /**
+   * Pending dish name to carry through to the video page when the dish
+   * has not been created yet. The video page lazily ensures the dish on
+   * the first meaningful action (save attempt / thumbs).
+   */
+  q?: string | null;
 };
 
 function formatDate(input: string | Date | null | undefined): string | null {
@@ -20,11 +26,11 @@ function formatDate(input: string | Date | null | undefined): string | null {
 function Hearts({ value }: { value: number | null }) {
   if (value == null) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-faint">
-        <span aria-hidden className="text-pink/70 tracking-tight">
-          ♡♡♡♡♡
-        </span>
-        <span>아직 평가 전</span>
+      <span
+        aria-label="아직 평가 전"
+        className="inline-flex items-center text-[14px] leading-none tracking-tight text-pink/60"
+      >
+        ♡♡♡♡♡
       </span>
     );
   }
@@ -32,11 +38,11 @@ function Hearts({ value }: { value: number | null }) {
   return (
     <span
       aria-label={`평균 ${value.toFixed(1)}점`}
-      className="inline-flex items-center gap-1.5"
+      className="inline-flex items-center gap-1.5 whitespace-nowrap"
     >
-      <span aria-hidden className="text-[14px] tracking-tight">
+      <span aria-hidden className="text-[14px] leading-none tracking-tight">
         <span className="text-pink-deep">{"♥".repeat(filled)}</span>
-        <span className="text-pink/70">{"♡".repeat(5 - filled)}</span>
+        <span className="text-pink/60">{"♡".repeat(5 - filled)}</span>
       </span>
       <span className="font-tnum text-[12px] font-medium text-pink-ink">
         {value.toFixed(1)}
@@ -45,15 +51,17 @@ function Hearts({ value }: { value: number | null }) {
   );
 }
 
-export function VideoCard({ video, dishId, videoId }: VideoCardProps) {
+export function VideoCard({ video, dishId, videoId, q }: VideoCardProps) {
   const params = new URLSearchParams();
   if (dishId) params.set("dish_id", dishId);
+  else if (q) params.set("q", q);
   if (videoId) params.set("video_id", videoId);
   const qs = params.toString();
   const href = `/video/${video.youtubeVideoId}${qs ? `?${qs}` : ""}`;
 
   const muted = video.thumbs === "down" || video.isUnavailableOnYoutube;
   const lastTried = formatDate(video.lastTriedAt);
+  const hasMeta = !!lastTried || video.attemptCount > 0;
 
   return (
     <a
@@ -72,8 +80,9 @@ export function VideoCard({ video, dishId, videoId }: VideoCardProps) {
           muted && "opacity-50",
         )}
       >
+        {/* Top row: thumbnail + title/channel */}
         <div className="flex gap-3">
-          <div className="relative h-20 w-32 flex-shrink-0 overflow-hidden rounded-sm border border-hairline">
+          <div className="relative h-16 w-24 flex-shrink-0 overflow-hidden rounded-sm border border-hairline">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={video.thumbnailUrl}
@@ -89,37 +98,32 @@ export function VideoCard({ video, dishId, videoId }: VideoCardProps) {
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-start gap-1.5">
-              <span
-                aria-hidden
-                className="mt-1 text-[12px] leading-none text-pink-deep"
-              >
-                ⊹
-              </span>
-              <h3 className="line-clamp-2 text-[15px] font-medium leading-snug text-ink">
-                {video.title}
-              </h3>
-            </div>
-            <p className="mt-1 truncate pl-[18px] text-[12px] text-ink-muted">
+            <h3 className="line-clamp-2 text-[14px] font-medium leading-snug text-ink">
+              {video.title}
+            </h3>
+            <p className="mt-1 truncate text-[12px] text-ink-muted">
               {video.channel}
             </p>
+          </div>
+        </div>
 
-            <div className="mt-2 flex items-center justify-between gap-2 pl-[18px]">
-              <Hearts value={video.averageRating} />
-              {lastTried || video.attemptCount > 0 ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-mint-soft px-2 py-0.5 text-[11px] text-mint-ink">
-                  {lastTried ? (
-                    <span className="font-tnum">{lastTried}</span>
-                  ) : null}
-                  {video.attemptCount > 0 ? (
-                    <span className="text-mint-deep">
-                      {lastTried ? "·" : null} {video.attemptCount}번
-                    </span>
-                  ) : null}
+        {/* Meta row spans the full card width — never gets squeezed by
+            the thumbnail column. */}
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+          <Hearts value={video.averageRating} />
+          {hasMeta ? (
+            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-mint-soft px-2 py-0.5 text-[11px] text-mint-ink">
+              {lastTried ? (
+                <span className="font-tnum">{lastTried}</span>
+              ) : null}
+              {video.attemptCount > 0 ? (
+                <span className="text-mint-deep">
+                  {lastTried ? " · " : null}
+                  {video.attemptCount}번
                 </span>
               ) : null}
-            </div>
-          </div>
+            </span>
+          ) : null}
         </div>
       </article>
     </a>

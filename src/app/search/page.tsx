@@ -219,16 +219,26 @@ function SearchPageBody() {
                 count={sorted.thumbsUpSection.length}
               />
               <div className="stagger space-y-3">
-                {sorted.thumbsUpSection.map((video) => (
-                  <VideoCard
-                    key={video.id}
-                    video={video}
-                    dishId={(video as { dishId?: string | null }).dishId}
-                    videoId={
-                      video.id !== video.youtubeVideoId ? video.id : null
-                    }
-                  />
-                ))}
+                {sorted.thumbsUpSection.map((video) => {
+                  const itemDishId =
+                    (video as { dishId?: string | null }).dishId ??
+                    dishId ??
+                    null;
+                  return (
+                    <VideoCard
+                      key={video.id}
+                      video={video}
+                      dishId={itemDishId}
+                      // pass the search query as a pending dish name when
+                      // the dish has not been created yet; the video page
+                      // will lazily ensure it on save.
+                      q={itemDishId ? null : initialQuery}
+                      videoId={
+                        video.id !== video.youtubeVideoId ? video.id : null
+                      }
+                    />
+                  );
+                })}
               </div>
             </section>
           ) : null}
@@ -244,16 +254,23 @@ function SearchPageBody() {
               <EmptyState title="이 메뉴는 아직 유튜브 결과가 없어요" />
             ) : (
               <div className="stagger space-y-3">
-                {sorted.generalSection.map((video) => (
-                  <VideoCard
-                    key={video.id}
-                    video={video}
-                    dishId={(video as { dishId?: string | null }).dishId}
-                    videoId={
-                      video.id !== video.youtubeVideoId ? video.id : null
-                    }
-                  />
-                ))}
+                {sorted.generalSection.map((video) => {
+                  const itemDishId =
+                    (video as { dishId?: string | null }).dishId ??
+                    dishId ??
+                    null;
+                  return (
+                    <VideoCard
+                      key={video.id}
+                      video={video}
+                      dishId={itemDishId}
+                      q={itemDishId ? null : initialQuery}
+                      videoId={
+                        video.id !== video.youtubeVideoId ? video.id : null
+                      }
+                    />
+                  );
+                })}
               </div>
             )}
           </section>

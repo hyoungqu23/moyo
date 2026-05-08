@@ -125,8 +125,21 @@ export default function HomePage() {
       </div>
 
       {/* Search */}
-      <div className="mb-8">
+      <form
+        className="mb-8"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          const raw = data.get("q");
+          const q = typeof raw === "string" ? raw.trim() : "";
+          if (!q) return;
+          // Free-text submit: navigate to /search?q=…; the search page
+          // ensures (find-or-create) a dish for the query.
+          router.push(`/search?q=${encodeURIComponent(q)}`);
+        }}
+      >
         <SearchInput
+          name="q"
           options={dishOptions}
           onSelect={(option) => {
             router.push(
@@ -134,7 +147,7 @@ export default function HomePage() {
             );
           }}
         />
-      </div>
+      </form>
 
       {home.isLoading ? (
         <div className="space-y-3">
