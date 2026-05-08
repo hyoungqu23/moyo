@@ -18,6 +18,11 @@ type HomeResponse = {
 };
 
 function recentToCard(row: { video: Video; attempt: Attempt }): VideoWithStats {
+  // The home "recent attempts" list shows one card per attempt. Plug that
+  // attempt's own rating into the heart row so the card is meaningful at
+  // a glance — server doesn't aggregate here so per-video average isn't
+  // available, but per-attempt rating is the natural fit anyway.
+  const rating = Number(row.attempt.rating);
   return {
     id: row.video.id,
     youtubeVideoId: row.video.youtubeVideoId,
@@ -26,8 +31,8 @@ function recentToCard(row: { video: Video; attempt: Attempt }): VideoWithStats {
     thumbnailUrl: row.video.thumbnailUrl,
     publishedAt: row.video.publishedAt ?? null,
     thumbs: (row.video.thumbs as VideoWithStats["thumbs"]) ?? null,
-    averageRating: null,
-    attemptCount: 1,
+    averageRating: Number.isFinite(rating) ? rating : null,
+    attemptCount: 0,
     lastTriedAt: row.attempt.triedAt,
     isHidden: row.video.isHidden,
     isUnavailableOnYoutube: row.video.isUnavailableOnYoutube,

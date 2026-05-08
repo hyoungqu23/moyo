@@ -106,9 +106,47 @@ export function VideoDetailClient({ id }: { id: string }) {
     queryFn: () => apiFetch<YoutubeVideoResponse>(`/api/youtube/video/${id}`),
   });
 
+  // Lookup: "what does the user already know about this video?".
+  // Hydrates thumbs, the resolved dish/video ids, and aggregates so a
+  // returning visit reflects the prior state instead of starting blank.
+  type LookupResponse = {
+    dish: Dish | null;
+    video: (Video & { thumbs: ThumbState }) | null;
+    averageRating: number | null;
+    attemptCount: number;
+  };
+  const lookupKey = initialDishId
+    ? `dish_id=${initialDishId}`
+    : pendingDishName
+      ? `dish_name=${encodeURIComponent(pendingDishName)}`
+      : "";
+  const lookup = useQuery<LookupResponse>({
+    queryKey: ["videos", "lookup", id, initialDishId, pendingDishName],
+    queryFn: () =>
+      apiFetch<LookupResponse>(`/api/videos/lookup?yt_id=${id}&${lookupKey}`),
+    enabled: !!lookupKey,
+  });
+
+  // Hydrate local state when the lookup returns a record. Use the
+  // primitive thumbs as the dep so we only sync when the server's view
+  // actually changes (avoids clobbering an in-flight optimistic toggle).
+  const serverThumbs = lookup.data?.video?.thumbs ?? null;
+  const serverVideoRecordId = lookup.data?.video?.id ?? null;
+  const serverDishId = lookup.data?.dish?.id ?? null;
+  useEffect(() => {
+    if (serverThumbs !== null) setThumbs(serverThumbs);
+  }, [serverThumbs]);
+  useEffect(() => {
+    if (serverVideoRecordId && !resolvedVideoRecordId) {
+      setResolvedVideoRecordId(serverVideoRecordId);
+    }
+  }, [serverVideoRecordId, resolvedVideoRecordId]);
+  useEffect(() => {
+    if (serverDishId && !resolvedDishId) setResolvedDishId(serverDishId);
+  }, [serverDishId, resolvedDishId]);
+
   // Attempts list for this video record. Only enabled once the video has
-  // been ensured (i.e., the user has already saved or thumbed it at least
-  // once, or arrived with a video_id from elsewhere).
+  // been ensured (URL param, lazy-created, or hydrated from lookup).
   const attempts = useQuery({
     queryKey: ["videos", resolvedVideoRecordId, "attempts"],
     queryFn: () =>
@@ -260,6 +298,10 @@ export function VideoDetailClient({ id }: { id: string }) {
       // Refresh this video's attempts list so the UI shows the new entry.
       queryClient.invalidateQueries({
         queryKey: ["videos", resolvedVideoRecordId, "attempts"],
+      });
+      // Refresh the lookup aggregates (averageRating / attemptCount).
+      queryClient.invalidateQueries({
+        queryKey: ["videos", "lookup", id],
       });
     },
     onError: (error: Error) => {
@@ -485,12 +527,27 @@ export function VideoDetailClient({ id }: { id: string }) {
           {(resolvedDishId || pendingDishName) && (
             <span className="inline-flex items-center gap-1 rounded-full bg-pink-soft px-2.5 py-0.5 text-[12px] text-pink-ink">
               <span aria-hidden>✿</span>
-              {pendingDishName ?? "메뉴"}
+              {lookup.data?.dish?.name ?? pendingDishName ?? "메뉴"}
               {resolvedDishId ? null : (
                 <span className="text-pink-deep/70">· 평가 시 생성</span>
               )}
             </span>
           )}
+          {lookup.data?.averageRating != null &&
+          lookup.data.attemptCount > 0 ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-butter px-2.5 py-0.5 text-[12px] text-ink">
+              <span aria-hidden className="text-pink-deep">
+                ♥
+              </span>
+              <span className="font-tnum font-medium">
+                {lookup.data.averageRating.toFixed(1)}
+              </span>
+              <span className="text-ink-muted">
+                · <span className="font-tnum">{lookup.data.attemptCount}</span>
+                번
+              </span>
+            </span>
+          ) : null}
           {detail.data?.channel ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-mint-soft px-2.5 py-0.5 text-[12px] text-mint-ink">
               <span aria-hidden>✎</span>
