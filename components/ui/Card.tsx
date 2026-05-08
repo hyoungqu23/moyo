@@ -9,7 +9,8 @@ export function Card({
   return (
     <div
       className={clsx(
-        "rounded-lg border border-hairline bg-white p-6",
+        "rounded-md border border-hairline bg-paper-2 p-5 transition",
+        "hover:border-hairline-strong",
         className,
       )}
       {...props}
