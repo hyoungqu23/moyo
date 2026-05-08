@@ -221,14 +221,20 @@ export function VideoDetailClient({ id }: { id: string }) {
       ? description
       : description.slice(0, DESCRIPTION_LIMIT);
 
+  const inputClass =
+    "h-11 w-full rounded-md border border-hairline bg-ivory-soft px-3 text-[14px] text-ink placeholder:text-ink-faint focus:border-pink-deep focus:outline-none";
+  const textareaClass =
+    "min-h-24 w-full rounded-md border border-hairline bg-ivory-soft p-3 text-[14px] text-ink placeholder:text-ink-faint focus:border-pink-deep focus:outline-none";
+  const labelClass = "grid gap-1.5 text-[13px] font-medium text-ink-soft";
+
   const formContent = (
     <form className="grid gap-4" onSubmit={form.handleSubmit(onSubmit)}>
       {!dishId ? (
-        <p className="rounded-sm bg-parchment p-3 text-sm text-ink-muted">
-          기록을 저장하려면 검색 화면에서 메뉴를 선택해 진입해주세요.
+        <p className="rounded-md bg-lavender-soft px-3 py-2.5 text-[12px] text-lavender-ink">
+          ✎ 기록을 저장하려면 검색 화면에서 메뉴를 선택해 진입해주세요.
         </p>
       ) : null}
-      <label className="grid gap-1 text-sm">
+      <label className={labelClass}>
         평점 (0~5, 0.5 단위)
         <input
           type="number"
@@ -236,51 +242,56 @@ export function VideoDetailClient({ id }: { id: string }) {
           min={0}
           max={5}
           aria-required="true"
-          className="h-11 rounded-sm border border-black/10 px-3"
+          className={inputClass}
           {...form.register("rating", { valueAsNumber: true })}
         />
       </label>
-      <label className="grid gap-1 text-sm">
+      <label className={labelClass}>
         <span aria-hidden="true">시도 날짜 *</span>
         <input
           aria-label="시도 날짜"
           aria-required="true"
           type="date"
-          className="h-11 rounded-sm border border-black/10 px-3"
+          className={inputClass}
           {...form.register("triedAt")}
         />
       </label>
-      <label className="grid gap-1 text-sm">
+      <label className={labelClass}>
         변경 사항
         <textarea
           aria-label="변경 사항"
-          className="min-h-24 rounded-sm border border-black/10 p-3"
+          placeholder="레시피와 다르게 한 점이 있다면…"
+          className={textareaClass}
           {...form.register("changes")}
         />
       </label>
-      <label className="grid gap-1 text-sm">
+      <label className={labelClass}>
         개선 메모
         <textarea
           aria-label="개선 메모"
-          className="min-h-24 rounded-sm border border-black/10 p-3"
+          placeholder="다음에 만들 때 시도해볼 것"
+          className={textareaClass}
           {...form.register("improvementNote")}
         />
       </label>
       <div className="grid gap-2">
-        <p className="text-sm font-semibold">단계별 기록 (선택)</p>
+        <p className="text-[13px] font-medium text-ink-soft">
+          단계별 기록 <span className="text-ink-faint">· 선택</span>
+        </p>
         <div role="list" className="grid gap-3">
           {stepFields.fields.map((field, index) => (
             <div
               role="listitem"
               key={field.id}
-              className="grid gap-3 rounded-lg border border-hairline p-4"
+              className="grid gap-3 rounded-md border border-hairline bg-mint-soft/40 p-3"
             >
               <textarea
                 aria-label="단계 메모"
-                className="min-h-24 rounded-sm border border-black/10 p-3 text-[17px]"
+                placeholder="이 시점에 무엇을 했나요?"
+                className={textareaClass}
                 {...form.register(`steps.${index}.note`)}
               />
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
                   variant="secondary-pill"
@@ -295,7 +306,7 @@ export function VideoDetailClient({ id }: { id: string }) {
                 </Button>
                 <input
                   aria-label="수동 재생 시간"
-                  className="h-11 rounded-sm border border-black/10 px-3"
+                  className="h-11 w-24 rounded-md border border-hairline bg-ivory-soft px-3 font-tnum text-[14px] text-ink focus:border-pink-deep focus:outline-none"
                   placeholder="mm:ss"
                   defaultValue={formatTimestamp(field.captured)}
                   {...form.register(`steps.${index}.manual`)}
@@ -319,94 +330,136 @@ export function VideoDetailClient({ id }: { id: string }) {
             stepFields.append({ note: "", manual: "", captured: null })
           }
         >
-          단계 추가
+          + 단계 추가
         </Button>
       </div>
       <Button type="submit" disabled={submitAttempt.isPending || !dishId}>
-        {submitAttempt.isPending ? "저장 중…" : "저장"}
+        {submitAttempt.isPending ? "저장 중…" : "저장하기"}
       </Button>
     </form>
   );
 
   return (
-    <main>
-      <section className="bg-tile px-8 py-20 text-white">
-        <div className="mx-auto grid max-w-content gap-8 lg:grid-cols-[3fr_2fr]">
-          {detail.isLoading ? (
-            <Skeleton className="aspect-video w-full" />
-          ) : detail.data?.unavailable || !embeddable ? (
-            <div className="grid aspect-video place-items-center bg-black text-sm">
-              <p>
-                이 영상은 더 이상 유튜브에서 사용할 수 없거나 임베드가 차단되어
-                있습니다.
-              </p>
-            </div>
-          ) : (
-            <div
-              ref={playerHostRef}
-              id={playerHostId}
-              className="aspect-video w-full bg-black"
-            />
-          )}
-          <div>
-            <h1 className="text-[21px] font-semibold">
-              {detail.data?.title ?? "영상 상세"}
-            </h1>
-            {detail.data?.channel ? (
-              <p className="mt-2 text-sm text-body-muted">
-                {detail.data.channel}
-              </p>
-            ) : null}
-            <p className="mt-1 text-sm text-body-muted">YouTube ID: {id}</p>
-            <div className="mt-6">
-              <ToggleGroup value={thumbs} onChange={handleThumbsChange} />
-            </div>
-          </div>
-        </div>
-      </section>
-      <section className="mx-auto max-w-prosewide px-8 py-16">
-        <h2 className="mb-3 text-[21px] font-semibold">description</h2>
+    <div className="px-5 pt-5">
+      {/* Player */}
+      <div className="mb-5 overflow-hidden rounded-md border border-hairline shadow-soft">
         {detail.isLoading ? (
-          <Skeleton className="h-32" />
-        ) : description ? (
-          <p className="whitespace-pre-wrap text-[17px] leading-[1.47]">
+          <Skeleton className="aspect-video w-full !rounded-none" />
+        ) : detail.data?.unavailable || !embeddable ? (
+          <div className="grid aspect-video place-items-center bg-ink-soft px-6 text-center text-[13px] text-paper-2">
+            <p>
+              이 영상은 더 이상 유튜브에서 사용할 수 없거나
+              <br />
+              임베드가 차단되어 있어요.
+            </p>
+          </div>
+        ) : (
+          <div
+            ref={playerHostRef}
+            id={playerHostId}
+            className="aspect-video w-full bg-ink"
+          />
+        )}
+      </div>
+
+      {/* Title + meta */}
+      <div className="mb-4">
+        <h1 className="font-display text-[22px] font-medium leading-snug text-ink">
+          {detail.data?.title ?? "영상 상세"}
+        </h1>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {detail.data?.channel ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-mint-soft px-2.5 py-0.5 text-[12px] text-mint-ink">
+              <span aria-hidden>✎</span>
+              {detail.data.channel}
+            </span>
+          ) : null}
+          {detail.data?.publishedAt ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-lavender-soft px-2.5 py-0.5 text-[12px] text-lavender-ink">
+              <span aria-hidden>·</span>
+              <span className="font-tnum">
+                {new Date(detail.data.publishedAt)
+                  .toISOString()
+                  .slice(0, 10)
+                  .replace(/-/g, ".")}
+              </span>
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Thumbs sticker pair — the signature interaction */}
+      <div className="mb-7">
+        <p className="mb-2 flex items-center gap-1.5 text-[12px] text-ink-muted">
+          <span aria-hidden className="text-pink-deep">
+            ✿
+          </span>
+          이 영상 어떠셨어요?
+        </p>
+        <ToggleGroup value={thumbs} onChange={handleThumbsChange} />
+      </div>
+
+      {/* Description */}
+      {detail.isLoading ? (
+        <Skeleton className="mb-6 h-32" />
+      ) : description ? (
+        <section className="mb-6 rounded-md border border-hairline bg-ivory-soft p-4 shadow-soft">
+          <p className="mb-2 flex items-center gap-1.5 text-[12px] font-medium text-pink-deep">
+            <span aria-hidden>✿</span>
+            영상 설명
+          </p>
+          <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-ink-soft">
             {visibleDescription}
             {showDescriptionToggle ? (
               <button
                 type="button"
-                className="ml-2 text-primary"
+                className="ml-2 font-medium text-pink-deep hover:text-pink-ink"
                 onClick={() => setDescriptionExpanded((value) => !value)}
               >
                 {descriptionExpanded ? "접기" : "더 보기"}
               </button>
             ) : null}
           </p>
-        ) : null}
-        {detail.data?.topComment ? (
-          <>
-            <h2 className="mb-3 mt-10 text-[21px] font-semibold">상위 댓글</h2>
-            <p className="whitespace-pre-wrap text-[17px] leading-[1.47]">
-              {detail.data.topComment}
+        </section>
+      ) : null}
+
+      {/* Top comment */}
+      {detail.data?.topComment ? (
+        <section className="mb-6 rounded-md border border-hairline bg-mint-soft/40 p-4 shadow-soft">
+          <p className="mb-2 flex items-center gap-1.5 text-[12px] font-medium text-mint-deep">
+            <span aria-hidden>❀</span>
+            인기 댓글
+          </p>
+          <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-ink-soft">
+            {detail.data.topComment}
+          </p>
+        </section>
+      ) : null}
+
+      {/* Attempt record section */}
+      <section aria-labelledby="attempt-heading" className="mb-8">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[12px] font-medium text-lavender-deep">
+              ✎ 기록
             </p>
-          </>
-        ) : null}
-      </section>
-      <section
-        className="bg-parchment px-8 py-20"
-        aria-labelledby="attempt-heading"
-      >
-        <div className="mx-auto max-w-content">
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <h2 id="attempt-heading" className="text-[21px] font-semibold">
+            <h2
+              id="attempt-heading"
+              className="font-display text-[20px] font-medium leading-tight text-ink"
+            >
               내 시도 기록
             </h2>
-            <Button ref={triggerRef} onClick={() => setOpen(true)}>
-              기록하기
-            </Button>
           </div>
-          <EmptyState title="아직 시도 기록이 없습니다" />
+          <Button ref={triggerRef} onClick={() => setOpen(true)}>
+            + 기록하기
+          </Button>
         </div>
+        <EmptyState
+          title="아직 시도 기록이 없어요"
+          description="이 영상으로 만들어 본 적이 있다면 기록해 두세요."
+        />
       </section>
+
       {open ? (
         isDesktop ? (
           <Dialog
@@ -429,6 +482,6 @@ export function VideoDetailClient({ id }: { id: string }) {
         )
       ) : null}
       {toast ? <Toast message={toast} /> : null}
-    </main>
+    </div>
   );
 }
