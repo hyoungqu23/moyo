@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const root = process.cwd();
+const root = join(process.cwd(), "src");
 const routeFiles = [
   "app/api/home/route.ts",
   "app/api/youtube/search/route.ts",
