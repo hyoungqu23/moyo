@@ -65,17 +65,53 @@ Then fill in `.env.local`:
 
 ### 4. Apply schema to Supabase
 
-Drizzle migration + raw SQL PARTIAL UNIQUE를 한 번에 push:
+**`pnpm drizzle-kit migrate`를 쓰세요 (`push` 아님).** push는 schema.ts 기반이라 raw SQL
+migration (PARTIAL UNIQUE + RLS 정책)을 누락합니다.
 
 ```bash
-pnpm drizzle-kit push
+pnpm drizzle-kit migrate
 ```
 
-`recipe_sources_url_unique` PARTIAL UNIQUE index 적용 확인:
+적용되는 항목:
+1. **0000_messy_angel.sql** — 11테이블 + 인덱스 + raw SQL `recipe_sources_url_unique` PARTIAL UNIQUE
+2. **0001_condemned_gravity.sql** — `usage_counters.ingest_external_error_count` 컬럼
+3. **0002_rls_policies.sql** — 모든 테이블 RLS enable + `authenticated` role 정책
 
-```bash
-psql "$DATABASE_URL" -c "\d+ recipe_sources" | grep recipe_sources_url_unique
+**적용 확인 (Supabase Studio SQL Editor 또는 psql):**
+
+```sql
+-- PARTIAL UNIQUE 확인
+SELECT indexname FROM pg_indexes
+WHERE tablename = 'recipe_sources' AND indexname = 'recipe_sources_url_unique';
+
+-- RLS enable 확인 (모든 테이블 = true 나와야 함)
+SELECT tablename, rowsecurity FROM pg_tables
+WHERE schemaname = 'public' AND tablename IN (
+  'dishes', 'recipes', 'recipe_ingredients', 'recipe_steps',
+  'recipe_sources', 'recipe_customizations', 'attempts',
+  'attempt_step_notes', 'youtube_cache', 'ingestion_cache', 'usage_counters'
+);
+
+-- 정책 목록 (10개 정책)
+SELECT tablename, policyname FROM pg_policies
+WHERE schemaname = 'public' ORDER BY tablename;
 ```
+
+### RLS 설계 메모
+
+우리 Drizzle direct connection은 `postgres.{project-ref}` 유저로 접속 → **BYPASSRLS**.
+RLS 정책은 server-side 쿼리에 영향 없습니다.
+
+RLS의 진짜 목적은 **anon key 노출 방어**:
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`는 클라이언트 번들에 노출
+- 공격자가 anon key + Supabase REST API로 `/rest/v1/recipes` 직접 GET 시도 가능
+- RLS 정책으로 `authenticated` 외 SELECT 차단 + `auth.uid() = user_id` 매칭만 허용
+
+정책 규칙:
+- `dishes` / `recipes` / `attempts` / `ingestion_cache` / `usage_counters`: `auth.uid() = user_id` 직접
+- `recipe_ingredients` / `recipe_steps` / `recipe_sources` / `recipe_customizations`: 상위 `recipes.user_id` EXISTS 체크
+- `attempt_step_notes`: 상위 `attempts.user_id` EXISTS 체크
+- `youtube_cache`: 정책 없음 + RLS enable → anon 차단 + server BYPASSRLS로 동작
 
 ### 5. Run the dev server
 
