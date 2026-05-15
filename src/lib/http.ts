@@ -7,6 +7,7 @@
 import { ZodError } from "zod";
 
 import { UnauthenticatedError } from "@/lib/auth";
+import { ForbiddenError, NotFoundError } from "@/lib/recipes/ownership";
 
 export type ErrorCode =
   | "UNAUTHENTICATED"
@@ -44,6 +45,12 @@ export function jsonError(
 export function errorToResponse(error: unknown): Response {
   if (error instanceof UnauthenticatedError) {
     return jsonError("로그인이 필요합니다.", "UNAUTHENTICATED", 401);
+  }
+  if (error instanceof NotFoundError) {
+    return jsonError(error.message, "NOT_FOUND", 404);
+  }
+  if (error instanceof ForbiddenError) {
+    return jsonError(error.message, "FORBIDDEN", 403);
   }
   if (error instanceof ZodError) {
     return jsonError("입력 값이 올바르지 않습니다.", "VALIDATION_ERROR", 400, error.flatten());
