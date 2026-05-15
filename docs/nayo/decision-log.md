@@ -1,10 +1,10 @@
-# Decision Log — nayo (모두의요리사)
+# Decision Log — nayo (나만의요리사)
 
-> 버전: 1.5
+> 버전: 2.3
 > 작성일: 2026-05-03
-> 갱신일: 2026-05-08 (ALIGN 6차 rewind — BUILD 후 갭 4건 확정: Dish attempts API, Video UNIQUE 제약, URL 설계, thumbs 실호출)
-> 페이즈: ALIGN (ALIGN 6차 rewind — L45~L48 신규)
-> 기반: PRD v0.4 (B1·B2·B4·B5β·B6·B7-A 보강) + Design Decision Doc v1.1 + Tech Decision Doc v2.1 + harness-state.md
+> 갱신일: 2026-05-15 (L70 — AttemptStepNote v0.5 IN 부분 복원. Customization UI·쿨타임 홈은 OOS 유지.)
+> 페이즈: ALIGN (v0.5 PIVOT 사이클 — user_scope 종료 지점 + 다음 사이클 선행 결정 + office-hours 검토 + L69 부분 수정)
+> 기반: PRD v0.5 + Design Decision Doc v2.0 + Tech Decision Doc v3.0 + harness-state.md
 
 ---
 
@@ -1057,3 +1057,473 @@ rewind 1차 Critical 불일치: 0건 / Major 정정: 4건 / Minor 정정: 2건 (
 | 2026-05-08 | ALIGN 4차 재실행 (iteration 4) | 20개 검증 항목 전항목 PASS. Critical 0 / Major 0 / Minor 0. status: success. BUILD 진입 대기. |
 | 2026-05-08 | ALIGN 5차 rewind — Codex 외부 검토 후 정합성 재정리 (rewind_count 증가 없음 — 사용자 명시 요청) | Major 4건: API 개수 19→21 정합(L41, Attempt trash API 포함), Video 삭제 SQL deleted_at 제거+user_id 추가(L42), Dish/Step 삭제 모델 PRD↔Tech 통일(L43), is_deleted_on_youtube→is_unavailable_on_youtube rename(L44). Minor 4건: ARIA combobox 통일, 자동완성 인덱스 명세 보강, PRD OQ 섹션 분리(§10.1/10.2), 메타데이터 정정. decision-log v1.4. |
 | 2026-05-08 | ALIGN 6차 rewind — BUILD 후 갭 4건 확정 | L45: GET /api/dishes/{id}/attempts 신규(API 21→22). L46: videos UNIQUE(youtube_video_id, dish_id) + onConflictDoUpdate. L47: 영상 카드 링크 ?dish_id=&video_id= URL 파라미터 전달. L48: thumbs 토글 → PATCH /api/videos/{id}/thumbs 실호출 + 낙관적 업데이트. decision-log v1.5. |
+| 2026-05-14 | v0.5 PIVOT 사이클 ALIGN 완료 (decision-log v2.0) | PRD v0.5 + Design v2.0 + Tech v3.0 4문서 cross-check. Critical 0 / Major 0 / Minor 5(자동 수정 2건). L49~L64 신규 결정 등재. Out of Scope 갱신. OQ9~OQ11 신설. L1~L48 v0.5 흡수 매핑 부록 확정. user_scope 종료 지점 도달. |
+
+---
+
+## v0.5 PIVOT 사이클 결정 (2026-05-14~)
+
+---
+
+### L49 — 제품 정체성 전환 (Recipe 중심 개인 레시피북)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L49-PIVOT |
+| 날짜 | 2026-05-14 |
+| 페이즈 | DISCOVER (v0.5 PIVOT — Hermes 결정) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | "영상 시도 기록 도구"로서의 v0.4 정체성이 핵심 페인(회상·실패반복·변형망각)을 영상 단위로 접근하여 "내 레시피"가 생기지 않는 근본 문제 미해결. 외부 피드백 8건 + Codex/ChatGPT 검토 후 정체성 전환 결정. |
+| **대안** | (1) v0.4 정체성 유지 + 점진적 Recipe 레이어 추가, (2) Recipe 중심으로 전면 전환 |
+| **선택** | "Recipe 중심 개인 레시피북"으로 정체성 전환. 출처(Source)를 흡수해 내 Recipe로 정규화·축적하는 것이 핵심 가치. |
+| **근거** | 영상 단위로 기록을 쌓아도 "내 레시피"는 생기지 않는다. Recipe 1급 엔티티가 있어야 출처를 흡수할 수 있고 Customization·Attempt가 의미 있게 누적된다. |
+| **영향** | PRD v0.5 전면 재작성. 데이터 모델 Recipe 중심 재설계. Design v2.0, Tech v3.0 후속 갱신. |
+| **후속 의존성** | L50~L55 후속 결정 전체. DESIGN v2.0 → ENGINEER v3.0 → ALIGN v2.0 순서. |
+
+---
+
+### L50 — 데이터 모델 재설계 (Recipe 1급 엔티티 + 하위 4개 신규)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L50-PIVOT |
+| 날짜 | 2026-05-14 |
+| 페이즈 | DISCOVER (v0.5 PIVOT — Hermes 결정) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | v0.4의 Dish / Video / Attempt 3-tier에서 Video가 외부 출처에 종속되어 "내 레시피" 축적이 불가능. Recipe를 1급 엔티티로 승격하고 Video를 RecipeSource로 격하해야 함. |
+| **대안** | (1) Video 엔티티에 Recipe 필드 추가, (2) Recipe 신규 1급 엔티티 + Video → RecipeSource 격하 |
+| **선택** | Recipe 1급 엔티티(title, servings, description, archived_at). RecipeIngredient / RecipeStep / RecipeSource / RecipeCustomization 신설. Attempt FK: video_id → recipe_id (NOT CASCADE — Attempt 있으면 Recipe hard delete deny). Dish는 카테고리/검색 진입점으로 유지. |
+| **근거** | Recipe 단위로 재료·단계·출처·조정이 모두 귀속되어야 "내 레시피" 축적이 완결됨. |
+| **영향** | PRD §3 전체. Tech v3.0 §3.2 Drizzle 스키마 전면 재설계. Migration Plan 필요. |
+| **후속 의존성** | L58 (archived_at 스키마), L59 (AttemptStepNote), L62 (Migration Plan). |
+
+---
+
+### L51 — Ingestion 전략 (규칙 기반 우선 + LLM fallback stub)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L51-PIVOT |
+| 날짜 | 2026-05-14 |
+| 페이즈 | DISCOVER (v0.5 PIVOT — Hermes 결정) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | 블로그·유튜브·텍스트 등 다양한 출처에서 Recipe Draft를 자동 생성하려면 파싱 전략이 필요. LLM 실호출은 비용·한도 리스크. |
+| **대안** | (1) 전부 수동 입력, (2) LLM only, (3) 규칙 기반 우선 + LLM fallback |
+| **선택** | 규칙 기반 파싱 우선(schema.org, 정규식). 실패/애매 시에만 LLM(Gemini API free tier 1순위) fallback. 검색·조회 단계 LLM 호출 금지. 실호출 구현은 다음 사이클(v0.6) — 이번 사이클(v0.5)은 스키마·엔드포인트·프롬프트 설계까지. |
+| **근거** | H5 가설(규칙 파싱 충분성) 검증이 필요한 상태에서 LLM 실호출 선투자는 불필요. 규칙 파싱 실패율이 높을 때 LLM 우선순위 상향하는 분기 결정 트리 준비. |
+| **영향** | PRD §4.3 Ingestion 흐름. Tech §7 Ingestion API 설계. LLM stub 인터페이스 정의. |
+| **후속 의존성** | L64 (LLM stub + Gemini 어댑터 다음 사이클). U4 (LLM fallback threshold). |
+
+---
+
+### L52 — 홈 화면 v2 (쿨타임 1순위 + 날씨 카피만)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L52-PIVOT |
+| 날짜 | 2026-05-14 |
+| 페이즈 | DISCOVER (v0.5 PIVOT — Hermes 결정) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | v0.4 메인 화면은 최근 시도 영상 5개 + Dish Top 3. Recipe 중심으로 재설계 시 "내 레시피"를 중심에 두는 홈이 필요. |
+| **대안** | (1) v0.4 구조 유지(최근 시도 중심), (2) 쿨타임 1순위 재설계, (3) 날씨 API 연동 포함 |
+| **선택** | 1순위 "안 먹은 지 n일"(쿨타임), 2순위 최근 만든 레시피, 3순위 자주 만든 메뉴. 날씨 관련 메뉴 제안 카피만 정의 — API 실연동은 다음 사이클(OOS). |
+| **근거** | H3·H7 가설 검증 목적. 회상 비용(P2) 직결. 날씨 API는 검증되지 않은 가치를 위한 구현 비용이 높아 카피로 선행 검증. |
+| **영향** | PRD §4.8. Design §0 홈 화면 v2. Tech §15 홈 쿼리 명세. |
+| **후속 의존성** | L57 (쿨타임 노출 3+7 결정 — Aphrodite). |
+
+---
+
+### L53 — 1인 사용자 유지 (가구/타인 평가 Phase 2)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L53-PIVOT |
+| 날짜 | 2026-05-14 |
+| 페이즈 | DISCOVER (v0.5 PIVOT — Hermes 결정) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | v0.4와 마찬가지로 1인 사용자 도구. v0.5 PIVOT에서 Recipe 중심 전환 후에도 가구/Household 도메인 도입 여부 결정 필요. |
+| **대안** | (1) 즉시 가구 도메인 도입, (2) 1인 사용자 유지 + Phase 2 계획 |
+| **선택** | 1인 사용자 페르소나 유지. 가구/Household 도메인, 타인 레시피 평가, 가구원 공유는 Phase 2로 명시적 Out of Scope. |
+| **근거** | 싱글유저 반복 사용 검증 후 멀티유저 전환이 적절. 1인 도구에서 검증되지 않은 가구 도메인 추가는 스코프 크리프. |
+| **영향** | PRD §9 비-목표. Out of Scope 목록 갱신. |
+| **후속 의존성** | Phase 2 기획 시 L53 재검토 트리거. |
+
+---
+
+### L54 — RecipeCustomization 한 손 조작 UX 가설 (OQ8 → DESIGN 위임)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L54-PIVOT |
+| 날짜 | 2026-05-14 |
+| 페이즈 | DISCOVER (v0.5 PIVOT — Hermes 결정) |
+| 상태 | CONFIRMED (→ L56으로 DESIGN 결정 완료) |
+| **컨텍스트** | RecipeCustomization 수치 ± 조정을 요리 중 한 손으로 가능하게 하는 UX 요건. 구체적 인터랙션은 OQ8로 DESIGN 페이즈에 위임. |
+| **대안** | (1) 인라인 ± (옵션 A), (2) 별도 Sheet + 큰 버튼 (옵션 B) |
+| **선택** | OQ8로 미결 등록 → DESIGN 페이즈(Aphrodite)에서 결정. 결과: 옵션 B 채택 (L56). |
+| **근거** | 구체적 인터랙션 결정은 화면 구조 확정 후 가능. H6 가설(한 손 조작 충분성) 검증 전제. |
+| **영향** | PRD §4.5 "구체적 인터랙션·터치 타겟 크기는 DESIGN 페이즈에서 결정 (OQ8)". |
+| **후속 의존성** | L56 (Aphrodite OQ8 결정). |
+
+---
+
+### L55 — user_scope = decision-log (v0.5 사이클 종료 지점)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L55-PIVOT |
+| 날짜 | 2026-05-14 |
+| 페이즈 | DISCOVER (v0.5 PIVOT — Hermes 결정) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | v0.5 사이클에서 무엇까지 완성할지 범위 결정 필요. 코드 마이그레이션 실행과 QA·Ship은 다음 사이클로 분리. |
+| **대안** | (1) 코드 마이그레이션 실행까지 포함, (2) 설계 패키지(PRD+Design+Tech+decision-log) 완성까지 |
+| **선택** | user_scope = "decision-log". PRD v0.5 + Design Decision v2.0 + Tech Decision v3.0 + Migration Plan + decision-log v2.0 완성까지. code-review/QA/ship/deploy/canary/retro는 다음 사이클. |
+| **근거** | 코드 마이그레이션은 dry-run + snapshot 필수 — 설계 검증 없이 실행 불가. 설계 패키지 완성 후 다음 사이클에서 Migration TC-24 dry-run 선행. |
+| **영향** | harness-state.md user_scope 필드. ALIGN 완료 후 자동 전환 중단. |
+| **후속 의존성** | 다음 사이클 BUILD 진입 시 Migration Plan(L62) + API 32개(L63)가 첫 작업 기준. |
+
+---
+
+### L56 — RecipeCustomizationSheet 옵션 B 채택 (Aphrodite 결정)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L56-DESIGN |
+| 날짜 | 2026-05-14 |
+| 페이즈 | DESIGN (Aphrodite) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | OQ8: RecipeCustomization 수치 ± 조정 UX 방식. 옵션 A(인라인 ±)와 옵션 B(별도 Sheet) 비교. |
+| **대안** | 옵션 A: Recipe 상세 화면 내 인라인 ± 버튼. 옵션 B: 별도 "조정하기" RecipeCustomizationSheet (BottomSheet/Dialog). |
+| **선택** | 옵션 B 채택. AmountStepper 56×56px 터치 타겟. 재료 ± + 단계 메모 한 Sheet에서 처리. |
+| **근거** | 요리 중 한 손 조작 시 단일 Sheet + 큰 버튼이 분산 인라인 ± 대비 인지 부하 낮음. 56px 터치 타겟 확보가 Sheet에서 자연스러움. H6 가설 깨질 시 옵션 A 전환 (RM11). |
+| **영향** | design-decision §4 RecipeCustomizationSheet 상세 명세. Tech §17 a11y 명세 반영. |
+| **후속 의존성** | H6 가설 검증 후 RM11 트리거 시 옵션 A 전환 검토. |
+
+---
+
+### L57 — 쿨타임 노출 개수: 3개 고정 + 더보기 최대 7개 (Aphrodite 결정)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L57-DESIGN |
+| 날짜 | 2026-05-14 |
+| 페이즈 | DESIGN (Aphrodite) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | 홈 화면 쿨타임 영역에 몇 개의 Recipe 카드를 기본 노출할지 결정 필요. |
+| **대안** | (1) 5개 고정, (2) 3개 고정 + 더보기, (3) 사용자 설정 |
+| **선택** | 3개 고정 기본 노출. "더보기" 인라인 확장으로 최대 7개. 7개 초과 시 검색으로 유도. 페이지네이션 없음. |
+| **근거** | 격주 요리 빈도에서 "지금 뭐 해먹을까" 의사결정 해소에 3개가 최적. 7개 초과 시 선택 피로. H3 가설 검증 최소 노출수. |
+| **영향** | design-decision §0 홈 화면. Tech §15.1 쿨타임 쿼리 LIMIT 7 (클라이언트 제어). |
+| **후속 의존성** | H3·H7 가설 검증 결과에 따라 노출 개수 재검토 가능. |
+
+---
+
+### L58 — Recipe.archived 스키마: archived_at timestamptz nullable (Hephaestus 결정)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L58-ENGINEER |
+| 날짜 | 2026-05-14 |
+| 페이즈 | ENGINEER (Hephaestus) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | Recipe 보관(archived) 상태를 스키마에서 어떻게 표현할지 결정. boolean vs timestamptz. |
+| **대안** | 옵션 A: `archived boolean default false`. 옵션 B: `archived_at timestamptz nullable`. |
+| **선택** | 옵션 B: `archived_at timestamptz nullable`. null = 활성. not null = 보관됨. |
+| **근거** | archived 시점 추적 가능. Cron 자동 hard delete 30일 기준으로 활용 가능(`archived_at IS NOT NULL AND archived_at < NOW() - INTERVAL '30 days'`). 추후 복구 이력 분석 가능. |
+| **영향** | Tech §3.4 결정 영역. PRD §3.2 archived_at 필드 추가(Minor 자동 수정 완료). design-decision §7 휴지통 화면 "보관된 레시피" 섹션. |
+| **후속 의존성** | Tech §10.2 Recipe 보관 구현 코드. Migration STEP 1 CREATE TABLE recipes에 archived_at 포함. |
+
+---
+
+### L59 — 단계 메모 보존: AttemptStepNote 별도 테이블 (Hephaestus 결정)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L59-ENGINEER |
+| 날짜 | 2026-05-14 |
+| 페이즈 | ENGINEER (Hephaestus) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | 시도 중 특정 RecipeStep에 대한 메모를 RecipeCustomization(diff_type=step_note)으로 통합할지, 별도 테이블(AttemptStepNote)로 분리할지 결정 필요. |
+| **대안** | 옵션 A: AttemptStepNote 별도 테이블(attempt_id FK). 옵션 B: RecipeCustomization에 통합(diff_type=step_note). |
+| **선택** | 옵션 A: AttemptStepNote 별도 테이블. attempt_id(FK) + recipe_step_id(nullable FK) + video_timestamp(int nullable) + note(not null). |
+| **근거** | (1) RecipeCustomization = Recipe 자체에 영구 누적되는 내 버전. (2) AttemptStepNote = 특정 1회 시도의 일회성 메모. (3) 도메인 분리로 RM4·RM10 신호 독립 측정. (4) video_timestamp는 Attempt 단위 — Customization과 무관. |
+| **영향** | Tech §3.5 결정 영역. Tech §3.2 AttemptStepNote 테이블 스키마. API: /api/attempts/{id}/step-notes/*. |
+| **후속 의존성** | Migration STEP 6 steps → attempt_step_notes 데이터 이관. |
+
+---
+
+### L60 — AmountStepper ± 단위 정책 (Hephaestus 결정)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L60-ENGINEER |
+| 날짜 | 2026-05-14 |
+| 페이즈 | ENGINEER (Hephaestus) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | RecipeCustomizationSheet의 AmountStepper에서 재료 단위별 ± 조작 단위를 얼마로 설정할지 결정 필요. |
+| **대안** | (1) 단일 ±1 고정, (2) 단위별 차등 설정 |
+| **선택** | g/ml: ±10, kg/l: ±0.1, 개/줌: ±1, 큰술/T/작은술/t/컵: ±0.5. 비수치(약간·적당량 등): ± 버튼 비활성 + "조정 사유 메모" 모드. |
+| **근거** | 요리 현실에서 g는 10g 단위, 큰술은 0.5큰술 단위가 조정 최소 단위. 비수치 재료는 수치 조정이 의미 없으므로 메모 모드 대체. |
+| **영향** | Tech §8 UNIT_STEP_MAP 구현. design-decision §4 AmountStepper 명세 일치. |
+| **후속 의존성** | TC-09~TC-11 AmountStepper a11y 테스트. H6 가설 검증. |
+
+---
+
+### L61 — ConfidenceField threshold (Hephaestus 결정)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L61-ENGINEER |
+| 날짜 | 2026-05-14 |
+| 페이즈 | ENGINEER (Hephaestus) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | Ingestion Draft 검수 화면에서 파싱 신뢰도(ConfidenceField)를 어떤 기준으로 low/med/high로 분류할지 결정 필요. |
+| **대안** | (1) 재료·단계 개수 단순 기준, (2) 개수 + 패턴 매칭률 복합 기준 |
+| **선택** | high = 재료 5개 이상 AND 단계 3개 이상 AND 패턴 매칭률 80% 이상. med = 재료 또는 단계 일부 추출(규칙 부분 매칭). low = 재료 0개 OR 단계 0개 OR 빈/매칭 실패. |
+| **근거** | 재료 5+/단계 3+는 실용적 레시피 최소 구성. 패턴 매칭률 80%는 규칙 파싱 신뢰성 기준. low 시 LLM fallback 트리거. |
+| **영향** | Tech §9 calcOverallConfidence() / calcFieldConfidence() 구현. design-decision §5-C ConfidenceField 시각 표현 일치. |
+| **후속 의존성** | TC-12 ConfidenceField a11y 테스트. H5 가설 검증(LLM fallback 비율). |
+
+---
+
+### L62 — Migration Plan 8단계 SQL 명세 (Hephaestus 결정 — 다음 사이클 첫 작업)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L62-ENGINEER |
+| 날짜 | 2026-05-14 |
+| 페이즈 | ENGINEER (Hephaestus) |
+| 상태 | CONFIRMED (실행은 다음 사이클) |
+| **컨텍스트** | v0.4 스키마(dishes/videos/attempts/steps)에서 v0.5 스키마(recipes/recipe_ingredients/recipe_steps/recipe_sources/recipe_customizations/attempt_step_notes)로의 마이그레이션. |
+| **대안** | (1) 신규 테이블 신규 배포(데이터 포기), (2) 8단계 SQL 트랜잭션 마이그레이션 |
+| **선택** | 8단계 SQL 마이그레이션: STEP 1 신규 테이블 생성 → STEP 2 videos→recipe_sources 데이터 복사 → STEP 3 Dish별 placeholder Recipe 생성 → STEP 4 recipe_sources.recipe_id 갱신 → STEP 5 attempts.video_id→recipe_id 전환 → STEP 6 steps→attempt_step_notes 이관 → STEP 7 인덱스 생성 → STEP 8 구 테이블 DROP. |
+| **근거** | 기존 사용자 데이터(Attempt·Step 이력) 보존 필수(P1·P4 페인 직결). dry-run(BEGIN→ROLLBACK) + Supabase snapshot 백업 선행 필수. |
+| **영향** | Tech §13 Migration Plan SQL 스크립트 전체. 다음 사이클 BUILD 첫 작업. |
+| **후속 의존성** | TC-24 dry-run 필수. Migration STEP 4 youtube_video_id 중복 row dry-run 검증. STEP 3 placeholder Recipe 사용자 수동 편집 필요 안내. |
+
+---
+
+### L63 — API 32개 Contract (v0.4 22개 폐기/유지/신규 매핑)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L63-ENGINEER |
+| 날짜 | 2026-05-14 |
+| 페이즈 | ENGINEER (Hephaestus) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | v0.4의 22개 API (/api/videos/*, /api/attempts/{id}/steps/*, /api/dishes/{id}/attempts 등)를 v0.5 Recipe 기반으로 재설계. |
+| **대안** | (1) v0.4 API 유지 + Recipe API 추가 병행, (2) v0.4 API 폐기 + v0.5 API 32개로 교체 |
+| **선택** | v0.4 API 폐기: /api/videos/*, /api/attempts/{id}/steps/*, /api/dishes/{id}/attempts. v0.5 신규 32개: /api/recipes/ingest, /api/recipes (CRUD), /api/recipes/{id}/{ingredients|steps|customizations|sources}/*, /api/attempts/{id}/step-notes/*, /api/home (재설계), /api/youtube/search (Recipe 통합), /api/dishes/{id}/recipes (신규). |
+| **근거** | v0.4 API는 Video 중심 — Recipe 중심 v0.5와 구조적 호환 불가. 32개 전체 requireAuth() + 소유권 체인 검증. |
+| **영향** | Tech §12 API Contract 전체. 모든 API Route 구현 대상. |
+| **후속 의존성** | 다음 사이클 BUILD에서 32개 Route 구현. TC-24·TC-25 schema 검증. |
+
+---
+
+### L64 — LLM stub 인터페이스 + Gemini 어댑터 다음 사이클
+
+| 항목 | 내용 |
+|------|------|
+| ID | L64-ENGINEER |
+| 날짜 | 2026-05-14 |
+| 페이즈 | ENGINEER (Hephaestus) |
+| 상태 | CONFIRMED (실호출 구현은 다음 사이클) |
+| **컨텍스트** | LLM fallback(confidence=low 시 callLLMForIngestion())은 이번 사이클 OOS. 인터페이스만 정의. |
+| **대안** | (1) 이번 사이클 실호출 구현, (2) stub 인터페이스만 정의 후 다음 사이클 |
+| **선택** | callLLMForIngestion stub 함수 + LLMIngestionAdapter / GeminiIngestionAdapter 인터페이스 정의. 실호출 구현은 다음 사이클. Gemini API Key server-only(NEXT_PUBLIC_ prefix 금지). Gemini 무료 한도 실호출 직전 재확인 필수. |
+| **근거** | H5 가설(규칙 파싱 충분성) 검증 전 LLM 실호출 투자 불필요. stub으로 Ingestion 흐름 전체를 이번 사이클에서 코드 수준 검증 가능. |
+| **영향** | Tech §7.4 LLM Stub. lib/ingestion/llm-stub.ts. |
+| **후속 의존성** | 다음 사이클: GEMINI_API_KEY 격리 검증 + Gemini free tier 한도 재확인 + GeminiIngestionAdapter 구현. |
+
+---
+
+## 다음 사이클 선행 결정 (2026-05-15) — PREB-1 / PREB-2
+
+### L65 — OQ10 Recipe 영구 삭제 = Attempt CASCADE 삭제 (옵션 A)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L65-PREB-1 |
+| 날짜 | 2026-05-15 |
+| 페이즈 | 다음 사이클 BUILD 선행 결정 (사용자 직접 결정) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | Tech v3.0 §10에서 Recipe.archived_at 상태까지는 명시했으나, archived Recipe의 영구 삭제(Cron 30일 자동 또는 사용자 명시 "영구 삭제") 시 연결된 Attempt 처리가 미명세. design-decision은 "ENGINEER 페이즈에서 플로우 최종 확정"으로 위임된 상태였음. |
+| **대안** | (A) Attempt CASCADE — Recipe 삭제 시 Attempt·Customization·StepNote 모두 함께 영구 삭제. 2단계 확인 다이얼로그. (B) Attempt 보존(orphan) — recipe_id NULL 처리 + archived_recipe_title 스냅샷. 별도 "orphan attempts" 화면. (C) 사용자가 매번 라디오로 선택. |
+| **선택** | **옵션 A (CASCADE)**. `attempts.recipe_id` FK를 `ON DELETE CASCADE`로 변경. 2단계 확인 다이얼로그 + danger 컬러 영구 삭제 텍스트. archived 30일 grace period가 실수 방어선. |
+| **근거** | (1) v0.5 PIVOT 정체성 "Recipe 1급"과 정합 — Recipe 없는 Attempt는 어떤 재료/단계 기록인지 모름. (2) 데이터 모델 단순 — CASCADE 한 줄로 정합성 보장. (3) Cron 30일 자동 hard delete가 동일 흐름 — 별도 분기 코드 불필요. (4) M3·M6 지표 계산 단순 — 살아있는 Recipe만 대상. (5) 회상 욕구는 archived 상태에서 충족 가능. "영구 삭제"는 정말 지우는 행위. |
+| **영향** | Tech §3.2 attempts FK 변경 (NOT CASCADE → CASCADE). Tech §10 삭제 정책 보강. PRD §4.9 Recipe 영구 삭제 항목 보강. Design v2.0 §휴지통 영역에 2단계 확인 UX 추가. Migration STEP 5에서 FK 제약 정의 시 CASCADE 명시. |
+| **후속 의존성** | (1) 다음 사이클 BUILD에서 NAYO-A2 스키마 정의 시 CASCADE 반영. (2) NAYO-C2 휴지통 화면 영구 삭제 2단계 다이얼로그 구현. (3) Phase 2에 회상 보존 요구가 강하게 나오면 옵션 B(nullable + snapshot)로 단방향 마이그레이션 가능. |
+| **Trade-off 인지** | 단점: "이 레시피는 이제 안 만들지만 과거 시도 기록은 남기고 싶다" 욕구 차단. 반론: archived 상태가 사실상 "보관함" — 진짜 안 만들 거면 archived로 충분. 영구 삭제는 진짜 지우고 싶을 때만. |
+
+### L66 — OQ11 H3·H7 가설 통합 (옵션 A) → H3'
+
+| 항목 | 내용 |
+|------|------|
+| ID | L66-PREB-2 |
+| 날짜 | 2026-05-15 |
+| 페이즈 | 다음 사이클 BUILD 선행 결정 (사용자 직접 결정) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | PRD v0.5에서 H3(쿨타임 정성 자기보고)과 H7(쿨타임 정량 M6 측정)이 동일 측정 영역을 측정 방법만 달리해 분리 등재됨. doc-align에서 "동일 영역 중복 분리" 신호 OQ11로 미결 처리. |
+| **대안** | (A) 통합 H3' — 측정 방법 2가지 병행(정성 + 정량). 가설 트리 H1~H6로 단순화. (B) 분리 유지 + 분리 사유 명시 — 행동·태도 신호 독립. (C) H3 폐기, H7만 유지. |
+| **선택** | **옵션 A (통합 → H3')**. H3·H7을 H3'로 합치고, 측정 방법 2가지를 가설 본문에 명시. |
+| **근거** | (1) 1인 사용 단계에서 가설 트리 단순화 가치 큼. (2) 통합해도 측정 방법 2가지 병행이라 정보 손실 없음. (3) 두 측정이 갈리면 그때 분리 (그 자체가 학습). (4) 회고 단계에서 "정성 vs 정량 갈림" 자체가 신호로 작동. |
+| **새 H3' 정의** | "쿨타임 기반 홈 화면(`안 먹은 지 n일`)이 P2(회상 비용)을 줄인다. 측정: (a) 분기별 자기보고 회고 — '이전보다 회상 시간이 줄었나'. (b) M6 Recipe 재진입율 — 30일 내 동일 Recipe 재오픈 비율." |
+| **영향** | PRD §6 가설 표에서 H3 → H3'로 갱신, H7 항목 폐기 (H3'로 흡수). 가설 트리 H1'·H2·H3'·H4·H5·H6 6개로 단순화. RM3 시그널 갱신(정성/정량 갈림 시 분리 검토 트리거 명시). M6 정의 유지. |
+| **후속 의존성** | (1) 다음 사이클 BUILD 후 운영 단계 회고에서 정성/정량 갈림 발생 시 OQ12 신설 검토 (분리 재고). (2) Apollo friction_signal "H3·H7 분리 기준 모호" RESOLVED. |
+| **Trade-off 인지** | 단점: 통합 후 한 가설 안에서 정성·정량 비교 무게 미정. 반론: 회고 시 양쪽 모두 보고 정성·정량 비중을 그때 결정 — 사전 정의 부담 회피. |
+
+### L67 — 마이그레이션 폐기 → 신규 셋업 (office-hours 검토 후속)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L67-OFFICE-HOURS |
+| 날짜 | 2026-05-15 |
+| 페이즈 | 다음 사이클 BUILD 선행 결정 (office-hours Q2 검토 후속) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | Tech v3.0.1 §13 Migration Plan 8단계 SQL이 v0.4 데이터 보존을 전제로 설계됨. office-hours 검토에서 마이그레이션 ROI 점검 — 사용자가 v0.4 BUILD 직전 단계 데이터를 보존 가치 없음으로 판단. |
+| **대안** | (A) 마이그레이션 실행 (8단계 SQL + dry-run TC-24 + placeholder Recipe). (B) DB 리셋 + 신규 셋업 (drizzle-kit push 1단계). |
+| **선택** | **옵션 B (리셋)**. v0.4 attempts/videos/dishes 전체 폐기. 다음 사이클 첫 작업 = `drizzle-kit push`로 v0.5 스키마 빈 DB 생성. |
+| **근거** | (1) v0.4 BUILD 직전 단계 데이터 가치 < 마이그레이션 작업 비용. (2) STEP 4 youtube_video_id 중복 row 검증·STEP 5 placeholder Recipe 매핑·수동 후속 편집 → 전부 사라짐. (3) 다음 사이클 risk surface 대폭 감소. |
+| **영향** | Tech v3.0.1 §13 Migration Plan **전체 폐기** (다음 사이클 jira plan에서 제거). NAYO-A1 (snapshot)·A3 (raw SQL은 신규 스키마에 포함되므로 유지)·A4 (8-step dry-run)·A5 (실행) → 단일 셋업 티켓으로 압축. |
+| **후속 의존성** | F4-3 (Drizzle PARTIAL UNIQUE raw SQL) 잔존 — 신규 셋업에서도 raw SQL CREATE UNIQUE INDEX 추가 필수. |
+| **Trade-off 인지** | 단점: v0.4 BUILD 직전 작성한 코드의 데이터 검증 이력 손실. 반론: 1인 사용자 + 검증 단계 데이터라 학습 가치 미미. v0.5 빈 DB에서 새로 검증 시작이 합리적. |
+
+### L68 — H6 옵션 B 56px AmountStepper 확정 (paper test 미실시)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L68-OFFICE-HOURS |
+| 날짜 | 2026-05-15 |
+| 페이즈 | 다음 사이클 BUILD 선행 결정 (office-hours Q3 검토 후속) |
+| 상태 | CONFIRMED (paper test 없이 사용자 확신 기반) |
+| **컨텍스트** | office-hours에서 H6(한 손 조작 충분성) 검증을 코드 작성 전 paper test로 30분에 검증할 것을 권고. 사용자가 56px 충분하다고 확신, paper test 미실시 결정. |
+| **대안** | (A) Paper test 30분 후 결정. (B) 본인 확신으로 옵션 B 56×56px 확정. |
+| **선택** | **옵션 B (확정)**. RecipeCustomizationSheet AmountStepper 56×56px로 다음 사이클 진행. |
+| **근거** | (1) 사용자 직접 사용자이자 설계자 — 본인 손 크기·요리 습관 직접 파악. (2) 종이 시뮬레이션과 실제 사용은 차이 있음. 실제 코드 + 실제 요리에서 검증이 더 정확. |
+| **영향** | Design v2.0.1 §4 RecipeCustomizationSheet 변경 없음. tech-decision §15 AmountStepper a11y 변경 없음. |
+| **후속 의존성** | RM11(H6 깨짐) 트리거 조건은 살아있음. 다음 사이클 BUILD 직후 첫 1주일간 본인이 직접 요리하며 한 손 조작 시뮬레이션 필수. M4'(Customization 평균 개수)가 0.5 미만이면 RM11 트리거 → 옵션 A(인라인 ±) 전환 검토 또는 72px 확대 실험. |
+| **Trade-off 인지** | 사전 검증 30분 절약 vs 잘못된 결정 시 다음 사이클 §4.5 코드 폐기 리스크. 사용자 자기 사용자 신뢰로 후자 감수. |
+
+### L69 — v0.5 스코프 좁힘 — Ingestion 우선 (office-hours 검토 후속)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L69-OFFICE-HOURS |
+| 날짜 | 2026-05-15 |
+| 페이즈 | 다음 사이클 BUILD 선행 결정 (office-hours Q5 검토 후속) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | office-hours에서 v0.5 사이클이 동시 4개 신규 도입(Recipe 1급 + Ingestion + Customization + 홈 v2 쿨타임) → 학습 분리 불가 리스크 지적. 어느 가설(H5·H6·H3')이 깨졌는지 운영 신호로 분리 불가. |
+| **대안** | (A) 좁힌 v0.5: 인프라(Recipe 1급) + Ingestion만. Customization·홈 v2는 다음 사이클로 분리. (B) 원안 유지. |
+| **선택** | **옵션 A (좁힘)**. Ingestion 우선. Customization UX + 홈 v2 쿨타임은 다음 사이클로 분리. |
+| **근거** | (1) Ingestion = 신규 사용자 행동 생성 기능 (P6 검증 핵심). H5 단독 검증 가능 구조. (2) Customization은 H6 가설 검증에 시간 필요. 분리해서 독립 사이클로 가야 학습 분리. (3) 홈 v2 쿨타임은 데이터 누적 후 효용 (Attempt 10건+ 이후). 초기 사이클에 단순 "최근 Recipe" 리스트로 대체. |
+| **v0.5 좁힌 스코프 (IN)** | 신규 셋업(L67) / Recipe 1급 + Ingredient/Step/Source/Customization 스키마 / Ingestion 흐름 (§4.3) / Recipe CRUD (§4.4 — Ingestion 결과 편집) / 검색·자동완성 (§4.1) / 단순 메뉴 페이지 (§4.7 간소화 — Source 목록만) / 단순 시도 기록 (§4.6 단순화 — rating + memo) / 단순 홈 (검색바 + 최근 Recipe 5개) |
+| **v0.6+ 분리 (OUT)** | RecipeCustomization UI 구현 (§4.5) — 스키마만 v0.5, UI는 다음 사이클 / 홈 v2 쿨타임 (§4.8 "안 먹은 지 n일") — 단순 "최근 Recipe" 리스트로 대체 / AttemptStepNote 단계별 메모 — 다음 사이클 / archived Recipe + 영구 삭제 2단계 다이얼로그 — 다음 사이클 / Source 접근 불가 lazy check (§4.10) — 다음 사이클 |
+| **영향** | PRD §5.1 MVP 스코프 갱신 필요. next-cycle-jira-plan.md 좁힌 티켓 구조로 재작성. M5(Ingestion 성공률)와 H5 단독 검증 구조 확보. |
+| **후속 의존성** | 다음 사이클 BUILD 후 H5 결과에 따라 v0.6 사이클 진입 결정. M5 ≥ 70%면 Customization 진행. M5 < 50%면 LLM 실호출(다음 사이클 OOS 해제) 우선. |
+| **Trade-off 인지** | 단점: "Recipe 중심 레시피북" 정체성의 가장 매력적 기능(Customization)을 보류. v0.5 출시 시 v0.4와 사용자 관점에서 큰 차별점 = Ingestion만. 반론: Ingestion 자체가 P6 신규 페인 검증 + Recipe 1급 정체성을 사용자에게 보여주는 첫 진입점이라 정체성 약화 우려는 작음. |
+
+### L70 — L69 부분 수정: AttemptStepNote v0.5 IN 복원 (P1 직접 해결)
+
+| 항목 | 내용 |
+|------|------|
+| ID | L70-OFFICE-HOURS-2 |
+| 날짜 | 2026-05-15 |
+| 페이즈 | 다음 사이클 BUILD 선행 결정 (office-hours 2차 검토 후속) |
+| 상태 | CONFIRMED |
+| **컨텍스트** | L69에서 v0.5 스코프 좁히며 AttemptStepNote(단계별 메모)·Customization UI·쿨타임 홈을 모두 OOS로 분리. 사용자가 다시 "초기 페인포인트 직접 해결 기능은 반드시 필요"라며 재검토 요청. office-hours 2차 push 후 페인별 분리 결정. |
+| **대안 검토** | (A) 풀 복원 — 셋 다 v0.5 IN. (B) StepNote만 — 나머지 둘 다음 사이클. (C) 시간 분할 v0.5a+v0.5b. |
+| **선택** | **옵션 B — StepNote만 v0.5 IN 복원**. Customization UI·쿨타임 홈은 OOS 유지. |
+| **사유** | (1) **AttemptStepNote**: P1(실패 반복) 직접 해결. RecipeStep과 연결된 단계 단위 메모는 자유 텍스트 `improvement_note`로 대체 불가. 작업량 전체의 5~10% (테이블 1 + API 3개 + UI 입력란). H6 같은 검증 리스크 없음. → IN. (2) **Customization UI**: 자유 텍스트 `Attempt.changes`로 1차 대응 가능. 1~2개월 사용 후 진짜 답답한지 자기 검증 → 다음 사이클에 도입 결정. + H6 paper test 미실시 상태에서 30% 작업은 리스크. → 다음 사이클. (3) **쿨타임**: L67 데이터 리셋으로 v0.5 출시 직후 Attempt 0건. 쿨타임 영역 = 빈 상태. 데이터 누적(Recipe 5+/Attempt 10+) = 격주 사용 페이스로 2~3개월 후. 코드 시점 < 효용 시점이라 다음 사이클이 합리적. → 다음 사이클. |
+| **AttemptStepNote 명세 (v0.5)** | 테이블: `attempt_step_notes` (id, attempt_id CASCADE, recipe_step_id SET NULL, note TEXT NOT NULL, deleted_at, created_at). **video_timestamp는 v0.5 OOS** — YouTube IFrame Player API 추가 의존성 회피. API: POST/PATCH/DELETE /api/attempts/{id}/step-notes/{snId}. UI: Attempt BottomSheet/Dialog 안에 각 RecipeStep별 "메모 추가" 펼침 입력란. |
+| **영향** | tech-decision §3.5 attempt_step_notes 테이블 v0.5 신규 셋업에 포함. PRD §5.1 e' 항목 갱신: 단순 시도 기록 → "rating + memo + 선택적 단계별 메모". OOS-5c **RESOLVED**. next-cycle-jira-plan F-0/F-5 갱신. |
+| **후속 의존성** | StepNote video_timestamp 자동 캡처는 다음 사이클(YouTube IFrame Player API 의존성). M4'(현재 Customization 평균 개수)은 v0.5에는 측정 불가 (UI 없음) → "AttemptStepNote 평균 개수 per Attempt"로 대체 측정 검토. |
+| **Trade-off 인지** | 단점: 페인 우선순위가 강한 Customization을 한 사이클 더 보류. 사용자 자기 페인 강도 신호 일부 무시. 반론: 1~2개월 자유 텍스트 사용 = 진짜 페인 강도 자기 검증 + H6(56px) 실제 사용 검증 시점 = 다음 사이클 Customization 의사결정 입력. 사용자 의지 무시가 아니라 *검증 기반 결정*으로 전환. |
+
+---
+
+## Out of Scope (v0.5 사이클 갱신)
+
+| ID | 항목 | 제외 이유 | 재검토 시점 |
+|----|------|----------|------------|
+| OOS-1 | 가구/Household 도메인 + 가구원 공유 | 싱글유저 검증 후 결정 (L53) | 싱글유저 검증 완료 후 |
+| OOS-2 | 타인 레시피 평가 | Phase 2 (L53) | Phase 2 |
+| OOS-3 | 날씨 API 실연동 | 홈 카피로 선행 검증 후 결정 (L52) | 카피 반응 확인 후 |
+| OOS-4 | LLM 실호출 구현 (Gemini API) | H5 가설 검증 후 결정 (L51, L64) | 다음 사이클 + H5 결과 |
+| OOS-5 | 코드 마이그레이션 실행 (v0.4 → v0.5) | **WITHDRAWN (L67, 2026-05-15)** — 마이그레이션 자체 폐기. DB 리셋 + 신규 셋업으로 대체. Migration Plan(L62)도 비활성. |
+| OOS-5a | RecipeCustomization UI 구현 (§4.5) | **신규 (L69, 2026-05-15)** — v0.5 스코프 좁힘. 스키마는 v0.5에 포함, UI는 다음 사이클. | H5 결과 + H6 paper test 실제 결과 확인 후 |
+| OOS-5b | 홈 v2 쿨타임 ("안 먹은 지 n일") | **신규 (L69, 2026-05-15)** — v0.5는 단순 "최근 Recipe 5개" 리스트만. 쿨타임 UX는 Attempt 데이터 10건+ 축적 후 다음 사이클. | Attempt 누적 10건+ 시 |
+| OOS-5c | ~~AttemptStepNote (단계별 메모)~~ | **RESOLVED (L70, 2026-05-15)** — v0.5 IN 복원. P1 직접 해결. video_timestamp 자동 캡처만 다음 사이클. | — |
+| OOS-5d | archived Recipe + 영구 삭제 2단계 다이얼로그 | **신규 (L69, 2026-05-15)** — v0.5는 단순 hard delete만. archived 상태·휴지통 UX는 다음 사이클. | 다음 사이클 |
+| OOS-5e | Source 접근 불가 lazy check (§4.10) | **신규 (L69, 2026-05-15)** — v0.5는 명시 감지 안 함. | 다음 사이클 |
+| OOS-6 | RecipeCustomization swap/skip UX 구현 | H6 사용성 가설 먼저 검증. 이번 사이클 스키마까지 | 다음 사이클 |
+| OOS-7 | 통계/그래프 (별점 시계열 등) | 기록 데이터 축적 후 의미 있음 | 6개월+ 운영 후 |
+| OOS-8 | 부분 검색 통합 결과 (한국어 형태소·동의어) | 실사용 후 패턴 확인 후 도입 검토 | 실사용 후 결정 |
+| OOS-9 | 음성 입력·제스처 폴백 (RecipeCustomization) | H6 가설 검증 후 필요 시 도입 | H6 깨질 시 트리거 |
+| OOS-10 | 블로그 자동 수집 자동화 (URL → 텍스트 자동 추출) | 기술 복잡도. 규칙 기반 파싱 정확도 검증 후 | 다음 사이클 |
+
+---
+
+## 미결 사항 (Open Decisions)
+
+| ID | 항목 | 현재 상태 | 후속 검토 시점 |
+|----|------|----------|------------|
+| OQ5 | 자동완성 한국어 매칭 정확도 | MVP: LIKE sequential scan. 부정확 빈발 시 pg_trgm GIN index 도입. 트리거 기준 미결. | 실사용 후 결정 |
+| OQ7 | Ingestion 규칙 vs LLM fallback 비율 임계치 | 규칙 파싱 성공률이 어느 수준 이하일 때 LLM 기본 전환할지 미결. | ENGINEER + 다음 사이클 실사용 데이터 |
+| OQ8 | RecipeCustomization 한 손 조작 디자인 | **RESOLVED** — 옵션 B(RecipeCustomizationSheet) 채택. L56. |
+| OQ9 | H6 가설 검증 방법 (사용성 테스트) | 다음 사이클 사용성 테스트 계획 필요. "요리 중 조정 가능했나" 자기보고 + 사용성 테스트 병행 검토. | 다음 사이클 BUILD 완료 후 |
+| OQ10 | Recipe 영구 삭제 플로우 | **RESOLVED (2026-05-15)** — 옵션 A(Attempt CASCADE) 채택. attempts FK ON DELETE CASCADE + 2단계 확인 다이얼로그. L65 참조. |
+| OQ11 | H3·H7 분리 기준 (정성 vs 정량) | **RESOLVED (2026-05-15)** — 옵션 A(가설 통합 H3') 채택. H3·H7 → H3'로 통합, 측정 방법 2가지 병행. L66 참조. |
+
+---
+
+## v0.5 PIVOT 사이클 doc-align 요약 (2026-05-14)
+
+### 검증 항목 및 판정
+
+| 번호 | 검증 영역 | 판정 | 비고 |
+|------|----------|------|------|
+| A | 데이터 모델 일관성 (PRD §3 ↔ Tech §3.2) | PASS (Minor 2건 자동 수정) | Recipe/Ingredient/Step/Source/Customization/Attempt/AttemptStepNote 전체 일치. PRD §3.2 archived_at 추가(Minor 자동 수정). PRD §4.9 AttemptStepNote 삭제 정책 명시 부재(Minor — 다음 사이클 보강) |
+| B | 화면 ↔ API 매핑 (Design 7화면 ↔ Tech 32개 API) | PASS | 홈 v2·검색·메뉴 페이지·Recipe 상세·CustomizationSheet·Ingestion·Attempt·휴지통 전체 일치 |
+| C | 보안 경계 일관성 (32개 전 엔드포인트) | PASS | requireAuth() + WHERE user_id + 소유권 체인 전 문서 일치 |
+| D | 외부 API 사실 검증 | PASS (Minor 1건) | Gemini 15RPM/1500req/day 일치. YouTube quota 일치. commentThreads.list v0.5 미사용 유산(Minor — 다음 사이클 정리) |
+| E | 결정 영역 cross-check (L56~L61) | PASS | OQ8 옵션 B·쿨타임 3+7·archived_at·AttemptStepNote·AmountStepper 단위·ConfidenceField threshold 전체 3문서 일치 |
+| F | 삭제 정책 일관성 | PASS (Minor 1건) | PRD §4.9 ↔ Tech §10 일치. AttemptStepNote 항목 PRD 명시 부재(Minor — 다음 사이클 보강) |
+| G | 가설·지표 일관성 | PASS (OQ11 신설) | H1'~H7 ↔ M1~M6 매핑 일치. H3·H7 분리 기준 OQ11로 명확화 |
+| H | 메타데이터 정합성 | PASS (Minor 1건 자동 수정) | decision-log 헤더 "모두의요리사" → "나만의요리사" 갱신(v2.0에서 처리) |
+
+**v0.5 PIVOT 사이클 doc-align 최종: Critical 0건 / Major 0건 / Minor 5건 (자동 수정 2건, 다음 사이클 권장 3건)**
+
+---
+
+## 리스크 플래그 (다음 사이클 인계)
+
+| ID | 리스크 | 현재 대응 | 후속 확인 |
+|----|--------|----------|----------|
+| R1 | LLM 실호출 OOS — stub만. Gemini API Key 격리 검증 필요 | stub 인터페이스 + 다음 사이클 GeminiIngestionAdapter | 다음 사이클 실호출 전 GEMINI_API_KEY 격리 grep 필수 |
+| R2 | Migration STEP 5 attempts.video_id → recipe_id 매핑 충돌 | Dish 1개당 Recipe 1개 매핑. 중복 video_id 존재 시 dry-run에서 감지 | TC-24 dry-run에서 STEP 4·5 충돌 여부 검증 필수 |
+| R3 | RecipeSource PARTIAL UNIQUE — Drizzle 자동 생성 불가 | Tech §3.2에 raw SQL 주석 병기. Migration STEP 1에 CREATE UNIQUE INDEX 명시 | 다음 사이클 BUILD에서 raw SQL migration 별도 실행 필수 |
+| R4 | Gemini free tier 한도 실호출 직전 재확인 | 2026-05 기준 15RPM/1500req/day 명세. 실호출 전 공식 문서 재확인 필수 | 다음 사이클 LLM 실호출 구현 직전 |
+| R5 | Migration STEP 3 placeholder Recipe — Dish 1개당 1 Recipe 매핑. 사용자 수동 편집 필요 | Migration Plan에 안내 포함. 사용자가 직접 Recipe 제목·재료·단계 편집해야 함 | 다음 사이클 BUILD 전 cross-check |
+| R6 | Migration STEP 4 youtube_video_id 중복 row dry-run 검증 | dry-run TC-24 필수 명시 | 다음 사이클 BUILD 전 dry-run 실행 |
+
+---
+
+## 부록 — L1~L48 v0.5 흡수 매핑 요약
+
+v0.4까지의 결정(L1~L48)이 v0.5 PIVOT에서 어떻게 처리되는지 요약. 상세 내용은 PRD v0.5 부록 B 참조.
+
+| 결정 ID | 요약 | v0.5 처리 |
+|---------|------|----------|
+| L1 | 피처명 nayo | **유지** |
+| L2 | JTBD + 핵심 페인 P1~P5 | **확장** — P6·P7 추가. JTBD Recipe 단위 수정 |
+| L3 | Dish/Video/Attempt 3-tier | **재설계** — Recipe 1급 엔티티. Video → RecipeSource |
+| L4~L5 | 검색 정렬 (thumbs 기반) | **재설계** — Recipe average_rating 기반 정렬 |
+| L6 | 성공 지표 M1~M3 | **확장** — M4'·M5·M6 추가. M2 thumbs → M2' 평점 |
+| L7 | 가설 H1~H4 | **갱신** — H1→H1'. H5·H6·H7 신설 |
+| L8 | UI 분리 영구 가이드 | **유지** |
+| L9~L16 | DESIGN 결정 (디자인 시스템·반응형·컴포넌트) | **Design v2.0으로 이관** |
+| L17~L24 | ENGINEER 결정 (Drizzle·인증·캐시·정렬) | **Tech v3.0으로 이관 + 갱신** |
+| L25~L32 | ALIGN rewind 1차 + prd-writer rewind 후속 | **이력 보존** |
+| L33~L40 | ALIGN 4차 재실행 결정 (자동완성·접근불가·Step+timestamp·삭제 정책·메인 화면) | **v0.5에서 Recipe 기준 재설계로 흡수** |
+| L41~L44 | ALIGN 5차 rewind (API 개수·SQL·삭제 모델·컬럼 rename) | **이력 보존** — v0.5 새 설계에서 재적용 |
+| L45~L48 | ALIGN 6차 rewind (Dish Attempts API·UNIQUE·URL·thumbs) | **v0.5 폐기 API 포함** — L63에서 v0.5 API 32개로 교체 |

@@ -1,22 +1,23 @@
-# harness-state.md — nayo (모두의요리사)
+# harness-state.md — nayo (나만의요리사)
 
 ## 기본 정보
 - feature_name: nayo
 - feature_full_name: 모두의요리사
-- appetite: **Standard** (헤르메스 L3 자율 결정, 2026-05-04 — 사유 아래 의사결정 로그 L11 참조)
+- appetite: **Standard** (v0.5 PIVOT 사이클에서도 유지 — 설계 패키지만 스코프, 코드 마이그레이션 포함 다음 사이클에서 Epic 승격 재검토)
 - 시작일: 2026-05-03
-- user_scope: null
+- v0.5 PIVOT 진입일: 2026-05-14
+- user_scope: **decision-log** (5/22까지 설계 패키지 완성. BUILD~REFLECT는 다음 사이클)
 
 ## 현재 상태
 - phase: ALIGN
-- 위치: Athena(align)
-- 최종 갱신: 2026-05-08
+- 위치: Athena(align) — ALIGN 완료. user_scope 종료 지점 도달 (🏁)
+- 최종 갱신: 2026-05-14
 
 ## 현재 위치
-- current_phase: BUILD 재진입 대기 (ALIGN 6차 rewind 완료)
-- current_skill: Athena(align) 6차 rewind 완료. BUILD 후 갭 4건 확정 (L45~L48). 문서 6종 + 코드 갱신 완료. decision-log v1.5 갱신 완료.
-- iteration_count(ALIGN): 6 (rewind_count 증가 없음 — 사용자 명시 요청)
-- previous_phase: ENGINEER (dev-dialogue rewind 완료 — tech-decision.md v2.1)
+- current_phase: ALIGN 완료 — user_scope 종료 지점 도달 (🏁)
+- current_skill: Athena(align) — doc-align PASS (Critical 0 / Major 0 / Minor 5). decision-log v2.0 확정. Phase Report 반환 완료.
+- iteration_count(ALIGN, v0.5): 1 (완료)
+- previous_phase: ENGINEER (v0.5 PIVOT 완료 — tech-decision v3.0 확정)
 
 ## 가설 (잠정)
 - 사용자가 제시한 솔루션 가설(유튜브 API 활용, 메뉴명 검색, 영상 메모/체크, description·고정댓글 노출)은 보류 상태로 기록.
@@ -83,6 +84,19 @@
 - [2026-05-03 / L42] Video 삭제 count 쿼리 정정 — deleted_at IS NULL 제거(휴지통 attempt 보호) + user_id 보안 경계 추가. Dish count 쿼리도 user_id 추가.
 - [2026-05-03 / L43] Dish/Step 삭제 모델 PRD↔Tech 통일 — PRD Dish deleted_at 제거(hard delete only). PRD Step deleted_at 추가(개별 삭제 가능 — Tech·decision-log 일치).
 - [2026-05-03 / L44] 이전 명칭 `is_deleted_on_youtube`를 `is_unavailable_on_youtube`로 rename — YouTube API 삭제·비공개 구분 불가. 사용자 라벨은 "사용할 수 없는 영상"으로 통일. 3문서 전체 적용. Phase 2 enum 도입 미결.
+- [2026-05-14 / L49 / v0.5 PIVOT] 제품 정체성 전환 결정 — 외부 피드백 8건 + Codex/ChatGPT 검토 후, "영상 시도 기록 도구"에서 "Recipe 중심 개인 레시피북"으로 정체성 변경. 근거: ① 핵심 페인(회상·실패반복·변형망각)이 영상 단위가 아니라 *내 레시피 단위*에서 누적되어야 해소됨 ② Aggregation 요구(블로그/텍스트 흡수)를 Source 추상화로 흡수 ③ 가구/멀티유저는 싱글유저 반복 사용 검증 후 결정. 정책 7-3 능동 재라우팅 트리거. user_scope: decision-log(5/22).
+- [2026-05-14 / L50 / v0.5 PIVOT] 데이터 모델 재설계 방향 확정 — Recipe = 1급 엔티티(title, servings). RecipeIngredient(name, amount, optional, order). RecipeStep(order, instruction, timer_seconds, note). RecipeSource(type ∈ {youtube|blog|text}, url, raw, fetched_at). RecipeCustomization(user_diff JSON). Attempt FK: video_id → recipe_id. Dish는 카테고리/검색 진입점으로 유지.
+- [2026-05-14 / L51 / v0.5 PIVOT] Ingestion 전략 확정 — POST /api/recipes/ingest: 규칙 기반 파싱 우선, 실패/애매 시에만 LLM(Gemini API free tier 1순위) fallback. 검색/조회 단계 LLM 호출 금지. 캐시 키: hash(sourceType + url|text). 무료 사용자 월 N회 제한. **실호출 구현은 다음 사이클**, 이번 사이클은 설계/스키마/엔드포인트 명세까지.
+- [2026-05-14 / L52 / v0.5 PIVOT] 홈 화면 v2 방향 확정 — 1순위 "안 먹은 지 n일"(쿨타임), 2순위 최근 만든 레시피, 3순위 자주 만든 메뉴. 날씨 추천은 보조 영역의 카피만 정의(API 실연동은 다음 사이클).
+- [2026-05-14 / L53 / v0.5 PIVOT] 사용자 모델 유지 — 1인 사용자 유지. 가구/Household, 타인 레시피 평가, 가구원 공유는 Phase 2 또는 별도 사이클로 명시적 Out of Scope.
+- [2026-05-14 / L54 / v0.5 PIVOT] 요리 중 조정 UX 가설 — RecipeCustomization 편집은 한 손 조작·큰 터치 타겟·실시간 수치 ± 가능해야 함. 음성/제스처 폴백은 OOS. DESIGN 페이즈에서 와이어 + 인터랙션 명세.
+- [2026-05-14 / L55 / v0.5 PIVOT] 사용자 지정 종료 지점 — user_scope = "decision-log". 5/22까지 PRD v0.5 + Design Decision v2.0 + Tech Decision v3.0 + Migration Plan + decision-log v2.0(L49~) 완성. code-review/qa/security/ship/deploy/canary/retro는 다음 사이클.
+- [2026-05-15 / L65 / PREB-1] OQ10 RESOLVED — Recipe 영구 삭제 = Attempt CASCADE (옵션 A). `attempts.recipe_id` FK `ON DELETE CASCADE`. 2단계 확인 다이얼로그 UX. 사유: v0.5 Recipe 1급 정체성 정합, 데이터 모델 단순화, Cron 30일 자동 hard delete 동일 흐름. archived 30일 grace period가 실수 방어선. 영향: tech §3.2/§10, prd §4.9, design §휴지통.
+- [2026-05-15 / L66 / PREB-2] OQ11 RESOLVED — H3·H7 가설 통합 → H3' (옵션 A). 정성 자기보고 + 정량 M6 두 측정 병행. 사유: 1인 사용 가설 트리 단순화 가치, 정보 손실 없음, 신호 갈림 시 OQ12 신설 트리거. 영향: prd §6, §7 M6, §부록 A. Apollo friction "H3·H7 분리 기준 모호" RESOLVED.
+- [2026-05-15 / L67 / OFFICE-HOURS] 마이그레이션 폐기 → DB 리셋 + 신규 셋업. 사유: v0.4 BUILD 직전 단계 데이터 가치 < 마이그레이션 비용. 영향: tech-decision §13 Migration Plan 비활성. 다음 사이클 첫 작업 = drizzle-kit push 1단계. OOS-5 WITHDRAWN.
+- [2026-05-15 / L68 / OFFICE-HOURS] H6 옵션 B 56px 확정 (paper test 미실시). 사유: 사용자 직접 사용자이자 설계자, paper 시뮬레이션과 실제 사용 차이 인지, 실제 코드 + 실제 요리에서 검증이 더 정확. RM11 트리거 조건은 살아있음 — 다음 사이클 첫 1주일 본인 직접 요리 시 한 손 조작 시뮬레이션 필수.
+- [2026-05-15 / L69 / OFFICE-HOURS] v0.5 스코프 좁힘 — Ingestion 우선. Customization UI + 홈 v2 쿨타임은 다음 사이클로 분리. 사유: 동시 4개 신규 출시 시 어느 가설(H5·H6·H3') 깨졌는지 분리 불가. Ingestion 단독 = H5 단독 검증 가능 구조. 영향: prd §5.1 갱신, OOS-5a~5e 신설, next-cycle-jira-plan v3 (7개 티켓).
+- [2026-05-15 / L70 / OFFICE-HOURS-2] L69 부분 수정 — AttemptStepNote v0.5 IN 복원. Customization UI는 OOS 유지 (Attempt.changes 자유 텍스트로 1차 대응). 쿨타임 홈도 OOS 유지 (데이터 누적 후 효용). 사유: P1(실패 반복) 직접 해결 + 작업량 5~10% + 검증 부재 리스크 없음. video_timestamp 자동 캡처는 다음 사이클. 영향: tech §3.5 v0.5 IN 명시, prd §5.1 e' 갱신, OOS-5c RESOLVED, next-cycle-jira-plan v5 (F-0 9테이블, F-5 StepNote 추가).
 
 ## 이터레이션 이력
 
@@ -94,6 +108,11 @@
 | ALIGN 4차 (4차 재실행) | 2026-05-08 | 외부 팀 리뷰 + PRD v0.4 + design-decision v1.1 + tech-decision v2.0 보강 후속. 20개 항목 PASS. decision-log v1.3. |
 | ALIGN 5차 (rewind) | 2026-05-08 | Codex 외부 검토 후 정합성 재정리. Major 4 (API 개수, Video SQL, Dish/Step 모델, is_unavailable_on_youtube rename) + Minor 4 (ARIA combobox, 인덱스 명세, PRD OQ 분리, 메타). decision-log v1.4. rewind_count 증가 없음 — 사용자 명시 요청. |
 | ALIGN 6차 (rewind) | 2026-05-08 | BUILD 후 갭 4건 확정. L45: GET /api/dishes/{id}/attempts 신규(API 21→22). L46: videos UNIQUE(youtube_video_id, dish_id) + onConflictDoUpdate. L47: 영상 카드 ?dish_id=&video_id= URL 전달. L48: thumbs PATCH 실호출. 문서 6종 + 코드 갱신. decision-log v1.5. rewind_count 증가 없음 — 사용자 명시 요청. |
+| DISCOVER 재진입 (v0.5 PIVOT) | 2026-05-14 | 외부 피드백 8건 + Codex 검토 후 정체성 전환. "영상 시도 기록 도구" → "Recipe 중심 개인 레시피북". prd-writer rewind 3차 진입. user_scope: decision-log. 능동 재라우팅(정책 7-3). L49~L55 추가. rewind_count 증가 없음 — 사용자 명시 요청. |
+| DISCOVER v0.5 완료 | 2026-05-14 | PRD v0.5 작성 완료 (Recipe 1급 엔티티 · RecipeIngredient · RecipeStep · RecipeSource · RecipeCustomization · Attempt FK 변경 · Ingestion 흐름 · 홈 v2). review-loop 1R + prd-review R1~R4 PASS. Phase Report 반환. Aphrodite(design) 진입 대기. |
+| DESIGN v2.0 완료 | 2026-05-14 | design-decision.md v2.0 재작성. 화면 인벤토리 7개 (홈 v2 · 검색 · 메뉴 페이지 · Recipe 상세 · RecipeCustomizationSheet · Ingestion · Attempt Sheet · 휴지통). 신규 컴포넌트 13종. OQ8 결정(옵션 B — RecipeCustomizationSheet). 쿨타임 노출 3개 결정. D1-D4 게이트 PASS (WARN 1건 조건부 통과, Tier 1 자동 수정 1건). Phase Report 반환. Hephaestus(engineer) 진입 대기. |
+| ENGINEER v3.0 완료 | 2026-05-14 | tech-decision.md v3.0 재작성. §3 스키마 전면 재설계 (Recipe 1급 엔티티 + 7개 테이블 신규). §3.4 Recipe.archived_at (옵션 B) 결정. §3.5 AttemptStepNote 별도 테이블 (옵션 A) 결정. §7 Ingestion API 명세 (규칙 기반 파싱 + LLM stub). §8 AmountStepper ± 단위 정책. §9 ConfidenceField threshold. §12 API contract 32개. §13 Migration Plan SQL 스크립트. §14 LLM 비용 전략. TC-01~TC-32 전면 갱신. T1-T6 전항목 PASS. 팀 결정 dev-gate-003 자동 적용. Phase Report 반환. Athena(align) 진입 대기. |
+| ALIGN v0.5 완료 (🏁) | 2026-05-14 | Athena(align) 실행. doc-align 8개 domain 교차 검증 — Critical 0 / Major 0 / Minor 5 (2 auto-fixed: PRD archived_at 필드 추가·용어 통일, 3 next-cycle: AttemptStepNote 삭제 정책 PRD 미반영·commentThreads.list legacy·H3/H7 중복). decision-log v1.5 → v2.0 업그레이드 (L49~L64 등재, OOS-1~OOS-10, OQ9~OQ11 신규). improvement-backlog v1 → v2 갱신 (F4-1~F4-4 신규). harness-state 갱신. user_scope=decision-log 종료 지점 도달. 다음 사이클: code-review/qa/security/ship/deploy/canary/retro. |
 
 ## rewind 이력
 - 2026-05-03: doc-align rewind 1차 — Codex 외부 검토 6건 정정 (Major 4 + Minor 2)
@@ -105,13 +124,14 @@
 - 2026-05-08: ALIGN 4차 재실행 — 외부 팀 리뷰 + Apollo PRD v0.4 + Aphrodite design-decision v1.1 + Hephaestus tech-decision v2.0 보강 후속. 사용자 명시 요청 — rewind_count 증가 없음. 20개 항목 PASS. decision-log v1.3. BUILD 진입 대기.
 - 2026-05-08: ALIGN 5차 rewind — Codex 외부 검토 후 정합성 재정리 (Major 4 + Minor 4). API 개수 19→21, Video 삭제 SQL 정정, Dish/Step 삭제 모델 통일, is_unavailable_on_youtube rename, ARIA combobox 통일, 자동완성 인덱스 명세, PRD OQ 분리, 메타데이터 정정. 사용자 명시 요청 — rewind_count 증가 없음. decision-log v1.4. BUILD 진입 대기.
 - 2026-05-08: ALIGN 6차 rewind — BUILD 후 갭 4건 확정 (Major 4). L45: GET /api/dishes/{id}/attempts 신규(API 21→22). L46: videos UNIQUE(youtube_video_id, dish_id) + onConflictDoUpdate upsert. L47: 영상 카드 링크 ?dish_id=&video_id= URL 파라미터 전달. L48: thumbs 토글 PATCH /api/videos/{id}/thumbs 실호출 + 낙관적 업데이트. 문서 6종(decision-log/prd/tech-decision/design-decision/harness-state/README) + 코드 갱신(schema/migration/routes/pages/components). 사용자 명시 요청 — rewind_count 증가 없음. decision-log v1.5. BUILD 재진입 대기.
+- 2026-05-14: prd-writer rewind 3차 — v0.5 PIVOT (Recipe 중심 정체성 전환). 외부 피드백 8건 + Codex 검토 후 능동 재라우팅(정책 7-3). 사용자 명시 요청 — rewind_count 증가 없음. user_scope: decision-log(5/22 종료). L49~L55 추가. design-dialogue·dev-dialogue rewind는 PRD v0.5 완성 후 후속 자동 실행 예정.
 
 ## rewind_count
 - 1 (자동 재시도 rewind만 계산 — 사용자 명시 요청 prd-writer rewind 2회 제외)
 
 ## session_signals (Observer Mode)
 
-### gap_signals
+### gap_signals (v0.5 PIVOT 추가)
 - [RESOLVED / L20] H2·H3 가설 검증 방법("subsequent click-through 감소", "최초 클릭 비율 상승") — 클릭 이벤트 미수집 확정. H2·H3는 자기보고로 회고. M1·M2·M3 DB count로 대체 측정.
 - [RESOLVED / L19] DESIGN-GAP-1: `rgba(0, 0, 0, 0.08)` → `divider-subtle` Tailwind 토큰 등록 확정 (tech-decision.md 7.1).
 - [RESOLVED / L18] DESIGN-GAP-2: Bottom Sheet / Right Drawer — 라이브러리 없이 자체 구현 확정. BottomSheet(모바일 ≤833px) + Dialog(데스크톱 ≥834px). a11y 책임 tech-decision.md 7.2에 명시.
@@ -126,6 +146,25 @@
 - [RESOLVED / ALIGN 6차 rewind / L46] videos 중복 저장 가능성 → UNIQUE(youtube_video_id, dish_id) + onConflictDoUpdate로 해소.
 - [RESOLVED / ALIGN 6차 rewind / L47] 영상 카드 dish_id 소실 → URL ?dish_id=&video_id= 전달로 해소.
 - [RESOLVED / ALIGN 6차 rewind / L48] thumbs 토글 API 미연결 → PATCH /api/videos/{id}/thumbs useMutation + 낙관적 업데이트로 해소.
+- [OPEN / v0.5 PIVOT] RecipeCustomization과 Attempt 단위 단계 메모 간 경계 불명확 — attempt_step_notes 별도 테이블 vs RecipeCustomization 통합. tech-decision v3.0에서 결정 예정(OQ9 후보).
+- [OPEN / v0.5 PIVOT] Recipe.archived 상태 필드 명시 필요 — §3.2에서 "archived 상태"를 언급했으나 Recipe 스키마에 archived 필드(boolean 또는 timestamp)가 명시되지 않음. tech-decision v3.0에서 스키마 확정 필요.
+- [OPEN / v0.5 PIVOT] 쿨타임 노출 개수 미확정 — §4.8에서 상위 N개를 명시하지 않음. DESIGN 페이즈(v2.0)에서 결정 필요.
+- [OPEN / v0.5 PIVOT] Gemini API free tier 세부 한도 — PRD에서 "월별 요청 한도"로 표기했으나 실제는 일별(1500 req/day) 한도. tech-decision v3.0에서 정확한 수치 반영 필요.
+- [RESOLVED / DESIGN v2.0] OQ8 RecipeCustomization 한 손 조작 — 옵션 B(RecipeCustomizationSheet) 채택. AmountStepper 56×56px. design-decision.md §4 + §OQ8 결정 명시.
+- [RESOLVED / DESIGN v2.0] 쿨타임 노출 개수 — 3개 고정 + "더보기" 최대 7개. design-decision.md §0 홈 화면 명시.
+- [RESOLVED / DESIGN v2.0] Recipe.archived 상태 표현 — 메뉴 페이지 "숨긴 레시피 보기" + 휴지통 "보관된 레시피" 섹션. 스키마 필드는 tech-decision v3.0 위임.
+- [RESOLVED / ENGINEER v3.0] ConfidenceField 신뢰도 판정 기준 — 재료 5+ AND 단계 3+ AND 패턴 매칭률 80%+ = high. 일부 추출 = med. 빈 추출 = low. tech-decision §9 확정.
+- [RESOLVED / ENGINEER v3.0] AmountStepper ± 조작 단위 — g/ml: ±10, 큰술/작은술/컵: ±0.5, 개/줌: ±1. 비수치(약간/적당량): 버튼 비활성 + 메모 모드. tech-decision §8 확정.
+- [RESOLVED / ENGINEER v3.0] Recipe.archived 스키마 필드 — archived_at timestamptz nullable (옵션 B 채택). §3.4 결정.
+- [RESOLVED / ENGINEER v3.0] 단계 메모 보존 방식 — AttemptStepNote 별도 테이블 (옵션 A 채택). §3.5 결정.
+- [RESOLVED / ENGINEER v3.0] Gemini free tier 한도 — gemini-1.5-flash: 15 RPM / 1500 req/day / 1M tokens/min (2026-05 기준). 실호출 직전 재확인 필요 (U5). §14 명세.
+- [OPEN / ENGINEER v3.0 → ALIGN] tc-decision.md와 prd.md의 API 시그니처 cross-check 필요 (Athena ALIGN 4문서 검증 대상).
+- [RESOLVED / ALIGN v0.5] PRD §3.2 Recipe 스키마 archived_at 필드 누락 → Tier 1 자동 수정 완료 (Minor).
+- [OPEN / ALIGN v0.5 → next-cycle] PRD §4.9 삭제 정책 표에 AttemptStepNote 미기재. Tech §3.5 ON DELETE CASCADE와 정합 확인 필요 (Minor — next cycle).
+- [OPEN / ALIGN v0.5 → next-cycle] Tech §5.1 commentThreads.list v0.4 legacy 항목 잔존. v0.5 PIVOT에서 미사용 — next cycle cleanup.
+- [OPEN / ALIGN v0.5 / OQ11] H3(정성 자기보고)·H7(정량 M6 재진입률) 동일 쿨타임 효과 영역 중복 등재. 측정 방법 차이가 별도 가설 분리의 충분한 근거인지 검토 필요.
+- [OPEN / ALIGN v0.5 / OQ9] RecipeSource (recipe_id, url) WHERE url IS NOT NULL PARTIAL UNIQUE — Drizzle 자동 생성 불가, raw SQL 마이그레이션 필수. 실행 전 재확인 필요.
+- [OPEN / ALIGN v0.5 / OQ10] Attempt.recipe_id FK NOT CASCADE 정책 — Recipe hard delete 시 Attempt 1건 이상이면 denied, archived_at 전환. 삭제 UX 흐름 구현 시 다시 확인.
 
 ### friction_signals
 - [ALIGN rewind 1차] ALIGN 1차 doc-align이 본문 일관성(Right Drawer→Dialog 본문 미반영, H2·H3 검증 방법 PRD 미갱신) 및 외부 API 사실 검증(YouTube commentThreads.list 고정 댓글 보장 불가, Drizzle direct connection RLS 비작동) 누락. 다음 세션 개선 입력: doc-align 스킬 실행 시 (1) 합의 이력만 아닌 본문 전체 grep 필수, (2) 외부 API 공식 문서 사실 검증 체크리스트 포함.
@@ -135,6 +174,11 @@
 - [prd-writer rewind 2차] 팀 리뷰(석영·예진·용헌·민정)가 doc-align 1차에서 잡지 못한 6개 결정 영역(자동완성 분리, 유튜브 삭제 엣지, Attempt 트리거, Step+timestamp, 삭제 정책, 메인 화면) 발굴. 다음 사이클에 외부 팀 리뷰 단계를 ALIGN 이전 또는 prd-writer 완료 직후에 구조적으로 도입 검토 권장.
 - [ALIGN 4차 재실행] 팀 리뷰가 doc-align 1차에서 잡지 못한 6개 결정 영역(B1·B2·B4·B5β·B6·B7-A) 발굴 — 다음 사이클에 외부 팀 리뷰 단계를 ALIGN 이전 또는 prd-writer 완료 직후에 구조적으로 도입 검토 권장 (Hermes 지시 friction_signal 반영).
 - [ALIGN 5차 rewind] Codex 외부 검토가 doc-align 4차에서 잡지 못한 8건 발굴 — Video 삭제 SQL의 휴지통 충돌(보안+정책 복합 버그)이 Tier 1 자동 감지 대상 임에도 4차까지 미발견. 다음 사이클에 Video/Dish count 쿼리 user_id 누락 여부를 doc-align 체크리스트 항목으로 추가 권장.
+- [v0.5 PIVOT] prd-writer rewind 3차에서 §3.2 Recipe 스키마에 archived 필드를 명시하지 않고 삭제 정책에서만 "archived 상태"를 언급함. 다음 PRD 작성 시 삭제 정책과 스키마 필드를 동기화하는 체크리스트 항목 추가 권장.
+- [v0.5 PIVOT] H3와 H7이 검증 방법만 다를 뿐 동일 가설 영역(쿨타임 효과)을 중복 등재. 가설 등재 시 측정 방법 다름이 별도 가설 분리의 충분한 근거인지 다음 사이클에 검토 권장.
+- [ALIGN v0.5] PRD 스키마 표 작성 시 삭제 정책에 등장하는 상태 컬럼(archived_at, deleted_at 등)을 스키마 표에 동기화하는 체크리스트가 없어 Minor 불일치 발생. prd-writer/prd-review 스킬 개선 대상 (F4-1).
+- [ALIGN v0.5] DESIGN이 archived 상태 표현(숨긴 레시피 보기/보관된 레시피)을 먼저 결정하고 Tech가 archived_at 스키마를 후행 정의하는 역전 순서 발생. 데이터 모델 신규 상태 도입 시 Tech 선확인 단계 권장 (F4-2).
+- [ALIGN v0.5] Drizzle PARTIAL UNIQUE 자동 생성 불가 이슈 — tech-decision §13에 raw SQL 명시 완료이나, 스킬 레벨 체크리스트에 항목 추가 필요 (F4-3).
 
 ## repo_sync_status
 - 미실행

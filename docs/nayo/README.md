@@ -34,6 +34,19 @@
 | 14 | SHIP | ship-harness → deploy → canary | ⬜ | — | — |
 | 15 | REFLECT | retro-harness | ⬜ | — | — |
 
+### v0.5 PIVOT 사이클 (2026-05-14 ~ 2026-05-22)
+
+> 정체성 전환: "영상 시도 기록 도구" → "Recipe 중심 개인 레시피북".
+> user_scope: decision-log(🏁). BUILD~REFLECT는 다음 사이클.
+
+| # | 페이즈 | 산출물 / 게이트 | 상태 | 일시 | 비고 |
+|---|--------|-----------------|------|------|------|
+| v0.5-1 | DISCOVER | prd.md v0.5 (Recipe 중심) | ▶ | 2026-05-14 | prd-writer rewind 3차 — L49~L55 정체성 전환 |
+| v0.5-2 | DISCOVER | review-loop(1R) + prd-review(R1-R4) v0.5 | ⬜ | — | — |
+| v0.5-3 | DESIGN | design-decision.md v2.0 + D1-D4 | ⬜ | — | 홈 v2 / Recipe 편집·조정 / Ingestion 검수 |
+| v0.5-4 | ENGINEER | tech-decision.md v3.0 + Migration Plan + T1-T6 | ⬜ | — | 스키마 재설계 + Ingestion API 명세 |
+| v0.5-5 | ALIGN | doc-align + decision-log.md v2.0 (L49~) | 🏁 | — | 사용자 지정 종료 지점 (5/22) |
+
 상태 범례: ✅ 완료 · ▶ 현재 진입 · ⬜ 미완 · 🔴 FAIL · ⏭️ 건너뜀 · 🏁 사용자 지정 종료 지점
 
 ## 게이트 건너뛰기 이력

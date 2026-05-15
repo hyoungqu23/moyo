@@ -2,6 +2,18 @@
 
 Next.js App Router MVP for the `docs/nayo` product spec.
 
+## 설계 진행도 (v0.5 PIVOT 사이클)
+
+| 단계 | 산출물 | 상태 |
+|------|--------|------|
+| v0.5-1 DISCOVER | PRD v0.5 (`docs/nayo/prd.md`) | ✅ 완료 |
+| v0.5-2 DESIGN | Design Decision v2.0 (`docs/nayo/design-decision.md`) | ✅ 완료 |
+| v0.5-3 ENGINEER | Tech Decision v3.0 + Migration Plan (`docs/nayo/tech-decision.md`) | ✅ 완료 |
+| v0.5-4 ALIGN | Decision Log v2.0 (`docs/nayo/decision-log.md`) | ✅ 완료 |
+| v0.5-5 user_scope 종료 | 설계 패키지 완성 (decision-log user_scope 도달) | 🏁 종료 |
+
+> 다음 사이클 (v0.6~): code-review / qa / security / ship / deploy / canary / retro
+
 ## Local Setup
 
 1. Install dependencies:
