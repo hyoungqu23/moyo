@@ -36,6 +36,9 @@ interface ModalProps {
 
 const FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+// M7: 첫 포커스 진입 시 close 버튼은 제외 — 일반적으로 첫 콘텐츠 focusable에 진입하는 게 자연스러움.
+const FIRST_FOCUSABLE_SELECTOR =
+  'button:not([disabled]):not([data-modal-close]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export function Modal({
   open,
@@ -52,14 +55,16 @@ export function Modal({
 
   useBodyScrollLock(open);
 
-  // 열림 직후 트리거 element를 캐시하고 첫 focusable로 진입.
+  // 열림 직후 트리거 element를 캐시하고 첫 콘텐츠 focusable로 진입 (close 버튼 제외, M7).
   useEffect(() => {
     if (!open) return;
     triggerRef.current = (document.activeElement as HTMLElement | null) ?? null;
     const t = setTimeout(() => {
       const root = ref.current;
       if (!root) return;
-      const first = root.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+      const first =
+        root.querySelector<HTMLElement>(FIRST_FOCUSABLE_SELECTOR) ??
+        root.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
       (first ?? root).focus();
     }, 0);
     return () => clearTimeout(t);
@@ -116,9 +121,18 @@ export function Modal({
         "bg-black/40 backdrop-blur-[2px]",
         "animate-fade-up",
       )}
+      // M7: mousedown 단독으로 닫으면 textarea 안에서 드래그→외부 release 시 우발적 닫힘.
+      // mousedown/mouseup 모두 backdrop에서 발생한 경우만 닫음.
       onMouseDown={(e) => {
-        // 오버레이 클릭으로 닫기.
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) {
+          (e.currentTarget as HTMLDivElement).dataset.backdropDown = "1";
+        }
+      }}
+      onMouseUp={(e) => {
+        const started =
+          (e.currentTarget as HTMLDivElement).dataset.backdropDown === "1";
+        delete (e.currentTarget as HTMLDivElement).dataset.backdropDown;
+        if (started && e.target === e.currentTarget) onClose();
       }}
     >
       <div
@@ -144,6 +158,7 @@ export function Modal({
             type="button"
             onClick={onClose}
             aria-label="닫기"
+            data-modal-close=""
             className="w-11 h-11 -mr-2 -mt-2 flex items-center justify-center text-ink-muted-48 hover:text-ink rounded-sm"
           >
             <span aria-hidden className="text-[20px] leading-none">

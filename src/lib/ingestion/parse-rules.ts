@@ -23,9 +23,10 @@ const QUANTITY_PATTERN = `(?:\\d+(?:[./]\\d+)?|약간|적당량|조금|소량)`;
 
 // "{재료명} {수량}{단위?}" — 행 끝까지.
 // "돼지고기 500g" / "고추장 1큰술" / "마늘 2쪽" / "소금 약간"
+// L8: 괄호 부가설명 "(또는 깨소금)"이 뒤에 따라오면 그 앞에서 끊는다.
 const INGREDIENT_LINE = new RegExp(
   `^\\s*(?:[-•·*▪︎▶◦]\\s*)?` + // optional bullet
-    `(.{1,40}?)\\s+(${QUANTITY_PATTERN}\\s*(?:${KO_UNIT_PATTERN})?)\\s*$`,
+    `(.{1,40}?)\\s+(${QUANTITY_PATTERN}\\s*(?:${KO_UNIT_PATTERN})?)(?:\\s*\\(.*\\))?\\s*$`,
   "u",
 );
 

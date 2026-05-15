@@ -47,27 +47,30 @@ function cacheKeyFor(sourceType: string, urlOrText: string): string {
   return `${sourceType}:${hash.slice(0, 32)}`;
 }
 
-async function bumpCounter(
-  userId: string,
-  field:
-    | "ingestAttemptCount"
-    | "ingestDraftCount"
-    | "ingestSaveCount"
-    | "llmCallCount"
-    | "confidenceHighCount"
-    | "confidenceMedCount"
-    | "confidenceLowCount",
-) {
+type CounterField =
+  | "ingestAttemptCount"
+  | "ingestDraftCount"
+  | "ingestSaveCount"
+  | "ingestExternalErrorCount"
+  | "llmCallCount"
+  | "confidenceHighCount"
+  | "confidenceMedCount"
+  | "confidenceLowCount";
+
+const COUNTER_COLUMN: Record<CounterField, string> = {
+  ingestAttemptCount: "ingest_attempt_count",
+  ingestDraftCount: "ingest_draft_count",
+  ingestSaveCount: "ingest_save_count",
+  ingestExternalErrorCount: "ingest_external_error_count",
+  llmCallCount: "llm_call_count",
+  confidenceHighCount: "confidence_high_count",
+  confidenceMedCount: "confidence_med_count",
+  confidenceLowCount: "confidence_low_count",
+};
+
+async function bumpCounter(userId: string, field: CounterField) {
   const month = monthKey();
-  const column = {
-    ingestAttemptCount: "ingest_attempt_count",
-    ingestDraftCount: "ingest_draft_count",
-    ingestSaveCount: "ingest_save_count",
-    llmCallCount: "llm_call_count",
-    confidenceHighCount: "confidence_high_count",
-    confidenceMedCount: "confidence_med_count",
-    confidenceLowCount: "confidence_low_count",
-  }[field];
+  const column = COUNTER_COLUMN[field];
 
   await db
     .insert(usageCounters)
@@ -94,10 +97,9 @@ async function resolveDishId(
     const dish = await requireDishOwnership(dishId, userId);
     return dish.id;
   }
-  if (!dishName || !dishName.trim()) {
-    throw new Error("dishId 또는 dishName 중 하나는 필수입니다.");
-  }
-  const trimmed = dishName.trim();
+  // ingestSchema refine으로 dishId | dishName 중 하나는 보장됨 (H3).
+  // 여기 도달 시 dishName이 반드시 trim 가능한 문자열.
+  const trimmed = (dishName ?? "").trim();
   // 같은 사용자 Dish 동일 이름 있으면 재사용 (L40 메인 화면 Dish Top3 정합 — 동명 Dish 중복 방지)
   const [existing] = await db
     .select()
@@ -113,11 +115,11 @@ async function resolveDishId(
 }
 
 export async function POST(request: NextRequest) {
+  let userIdForFailureCounter: string | null = null;
   try {
     const { userId } = await requireAuth();
     const input = ingestSchema.parse(await request.json());
-
-    await bumpCounter(userId, "ingestAttemptCount");
+    userIdForFailureCounter = userId;
 
     const dishId = await resolveDishId(userId, input.dishId, input.dishName);
 
@@ -146,6 +148,8 @@ export async function POST(request: NextRequest) {
           publishedAt: meta.publishedAt,
         };
       } catch (err) {
+        // 외부 API 오류는 별도 카운터 — M5 분모에서 제외 (H2 정합성).
+        await bumpCounter(userId, "ingestExternalErrorCount");
         if (err instanceof YouTubeNotFoundError) {
           return jsonError("영상을 찾을 수 없어요.", "NOT_FOUND", 404);
         }
@@ -236,10 +240,16 @@ export async function POST(request: NextRequest) {
         },
       });
 
+    // 두 카운터 묶어서 갱신 — Draft가 실제 사용자에게 전달된 시점에만 attempt 누적.
+    // 이 위에서 throw / return하면 attempt도 increment 안 됨 → M5 분모 정확.
+    await bumpCounter(userId, "ingestAttemptCount");
     await bumpCounter(userId, "ingestDraftCount");
 
     return Response.json({ draft });
   } catch (error) {
+    // 마지막 단계까지 오기 전 throw (Drizzle / 캐시 / 파싱) — 사용자 책임 아닌 내부 실패.
+    // 외부 API 오류는 위 try 안에서 이미 카운팅. 여기서 한 번 더 잡으면 중복이라 호출하지 않음.
+    void userIdForFailureCounter;
     return errorToResponse(error);
   }
 }

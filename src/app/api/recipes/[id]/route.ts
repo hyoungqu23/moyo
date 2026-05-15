@@ -114,10 +114,19 @@ export async function DELETE(_request: NextRequest, ctx: Params) {
       .where(and(eq(attempts.recipeId, id), eq(attempts.userId, userId)));
 
     if (attemptCount > 0) {
-      return jsonError(
-        "시도 기록이 있어 삭제할 수 없어요. (보관 기능은 다음 사이클에서 제공 예정)",
-        "HAS_ATTEMPTS",
-        422,
+      // L8: archived 전환·영구 삭제 다이얼로그는 v0.5 OOS-5d. 응답에 dishId 힌트를 포함해
+      // 클라이언트가 메뉴 페이지로 사용자를 돌려보낼 수 있게 한다.
+      const [{ dishId }] = await db
+        .select({ dishId: recipes.dishId })
+        .from(recipes)
+        .where(and(eq(recipes.id, id), eq(recipes.userId, userId)));
+      return Response.json(
+        {
+          error: "시도 기록이 있어 삭제할 수 없어요. 보관 기능은 다음 사이클에서 제공 예정이에요.",
+          code: "HAS_ATTEMPTS",
+          dishId,
+        },
+        { status: 422 },
       );
     }
 

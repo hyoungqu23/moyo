@@ -319,6 +319,9 @@ export const usageCounters = pgTable(
     ingestAttemptCount: integer("ingest_attempt_count").notNull().default(0),
     ingestDraftCount: integer("ingest_draft_count").notNull().default(0),
     ingestSaveCount: integer("ingest_save_count").notNull().default(0),
+    // 외부 API 오류 / 사용자 책임 아닌 실패 — M5 분모에서 제외.
+    // 예: YouTube videos.list 404 / 429 / 네트워크 오류.
+    ingestExternalErrorCount: integer("ingest_external_error_count").notNull().default(0),
     llmCallCount: integer("llm_call_count").notNull().default(0),
     confidenceHighCount: integer("confidence_high_count").notNull().default(0),
     confidenceMedCount: integer("confidence_med_count").notNull().default(0),

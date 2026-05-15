@@ -48,6 +48,8 @@ function IngestForm() {
   const [sourceType, setSourceType] = useState<"youtube" | "text">("youtube");
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
+  // L8: dishName 초기값은 마운트 1회. /ingest 진입 후 같은 페이지에서 ?dishName=...을
+  // 다시 갈아끼우는 시나리오는 v0.5 흐름에 없음 (메뉴 페이지 → 새 ingest 진입은 새 마운트).
   const [dishName, setDishName] = useState(searchParams.get("dishName") ?? "");
 
   // 5-B 처리 결과 / 5-C 검수.

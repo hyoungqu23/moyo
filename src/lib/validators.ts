@@ -173,9 +173,11 @@ const ingestPayloadText = z.object({
   text: z.string().trim().min(1).max(50000),
 });
 
-export const ingestSchema = z.discriminatedUnion("sourceType", [
+// discriminatedUnion + refine: base union으로 discriminated narrow 유지,
+// refine은 parse용 wrapper로 분리. type 추론은 base 사용.
+const ingestUnionBase = z.discriminatedUnion("sourceType", [
   z.object({
-    dishId: uuidSchema.optional(), // 없으면 신규 Dish 생성용 dishName 사용
+    dishId: uuidSchema.optional(),
     dishName: z.string().trim().min(1).max(80).optional(),
     sourceType: z.literal("youtube"),
     payload: ingestPayloadYouTube,
@@ -187,7 +189,15 @@ export const ingestSchema = z.discriminatedUnion("sourceType", [
     payload: ingestPayloadText,
   }),
 ]);
-export type IngestInput = z.infer<typeof ingestSchema>;
+
+export const ingestSchema = ingestUnionBase.refine(
+  (v) => Boolean(v.dishId || (v.dishName && v.dishName.trim())),
+  {
+    message: "메뉴(dishId 또는 dishName) 중 하나는 필수예요.",
+    path: ["dishName"],
+  },
+);
+export type IngestInput = z.infer<typeof ingestUnionBase>;
 
 // === 자동완성·검색 ===
 export const autocompleteQuerySchema = z.object({

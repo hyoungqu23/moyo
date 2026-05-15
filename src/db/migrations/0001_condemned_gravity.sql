@@ -1,0 +1,1 @@
+ALTER TABLE "usage_counters" ADD COLUMN "ingest_external_error_count" integer DEFAULT 0 NOT NULL;

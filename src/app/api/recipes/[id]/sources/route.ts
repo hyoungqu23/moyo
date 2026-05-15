@@ -47,9 +47,10 @@ export async function POST(request: NextRequest, ctx: Params) {
         .returning();
       return Response.json({ source: created }, { status: 201 });
     } catch (err) {
-      // PARTIAL UNIQUE 위반 (동일 Recipe 동일 URL).
-      if (err instanceof Error && /unique/i.test(err.message)) {
-        return jsonError("이미 등록된 출처입니다.", "CONFLICT", 409);
+      // L8: postgres SQLSTATE 23505 (UNIQUE_VIOLATION) 매칭 — 메시지 텍스트 의존 제거.
+      const code = (err as { code?: string } | null)?.code;
+      if (code === "23505") {
+        return jsonError("이미 등록된 출처예요.", "CONFLICT", 409);
       }
       throw err;
     }

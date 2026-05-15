@@ -140,7 +140,15 @@ export async function getYouTubeVideoMeta(
     .limit(1);
 
   if (cached && cached.fetchedAt > cutoff) {
-    return cached.payload as YouTubeVideoMeta;
+    // JSONB 저장 시 Date는 ISO string으로 직렬화되므로 cache HIT 경로에서 Date로 복원.
+    // (H4) cache MISS는 Date 객체 반환, HIT는 string 반환되던 타입 불일치 해소.
+    const raw = cached.payload as Omit<YouTubeVideoMeta, "publishedAt"> & {
+      publishedAt: string | null;
+    };
+    return {
+      ...raw,
+      publishedAt: raw.publishedAt ? new Date(raw.publishedAt) : null,
+    };
   }
 
   const meta = await fetchVideoMeta(youtubeVideoId);

@@ -1,23 +1,53 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export default function SignInPage() {
+  return (
+    <Suspense fallback={<SignInShell />}>
+      <SignInForm />
+    </Suspense>
+  );
+}
+
+function SignInShell() {
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-content flex-col items-center justify-center px-4">
+      <h1 className="text-display-lg text-ink text-center">나만의요리사</h1>
+    </main>
+  );
+}
+
+function SignInForm() {
   const toast = useToast();
+  const searchParams = useSearchParams();
   const [pending, setPending] = useState(false);
+  const nextPath = searchParams.get("next") ?? "/";
+  const errorParam = searchParams.get("error");
+
+  useEffect(() => {
+    if (errorParam) {
+      toast.show(errorParam, "error");
+    }
+  }, [errorParam, toast]);
 
   const onGoogleSignIn = async () => {
     setPending(true);
     try {
       const supabase = createSupabaseBrowserClient();
+      const redirectUrl = new URL("/auth/callback", window.location.origin);
+      if (nextPath !== "/") {
+        redirectUrl.searchParams.set("next", nextPath);
+      }
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: redirectUrl.toString(),
         },
       });
       if (error) throw error;

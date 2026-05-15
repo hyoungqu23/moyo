@@ -4,10 +4,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { IngredientRow } from "@/components/recipes/IngredientRow";
-import { StepRow } from "@/components/recipes/StepRow";
-import { SourceCard } from "@/components/sources/SourceCard";
 import { AttemptSheet } from "@/components/recipes/AttemptSheet";
+import { IngredientRow, type IngredientRowValue } from "@/components/recipes/IngredientRow";
+import { StepRow, type StepRowValue } from "@/components/recipes/StepRow";
+import { SourceCard } from "@/components/sources/SourceCard";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
@@ -52,9 +52,65 @@ export function RecipeDetailClient({ recipeId }: { recipeId: string }) {
 
   const [attemptOpen, setAttemptOpen] = useState(false);
 
-  const titleMutation = useMutation<unknown, ApiError, { title?: string; servings?: string | null; description?: string | null }>({
-    mutationFn: (patch) => apiJson.patch(`/api/recipes/${recipeId}`, patch),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["recipe", recipeId] }),
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["recipe", recipeId] });
+
+  // M6: 필드별 mutation 분리 — 한 필드 PATCH가 다른 필드 pending state를 잠그지 않도록.
+  const titleMutation = useMutation<unknown, ApiError, string>({
+    mutationFn: (title) => apiJson.patch(`/api/recipes/${recipeId}`, { title }),
+    onSuccess: invalidate,
+    onError: (e) => toast.show(e.message, "error"),
+  });
+  const servingsMutation = useMutation<unknown, ApiError, string | null>({
+    mutationFn: (servings) => apiJson.patch(`/api/recipes/${recipeId}`, { servings }),
+    onSuccess: invalidate,
+    onError: (e) => toast.show(e.message, "error"),
+  });
+  const descriptionMutation = useMutation<unknown, ApiError, string | null>({
+    mutationFn: (description) =>
+      apiJson.patch(`/api/recipes/${recipeId}`, { description }),
+    onSuccess: invalidate,
+    onError: (e) => toast.show(e.message, "error"),
+  });
+
+  // M6: 하위 리소스 CRUD도 react-query mutation으로 — pending state + 에러 처리 일관성.
+  const ingredientPatchMutation = useMutation<
+    unknown,
+    ApiError,
+    { iid: string; patch: { name: string; amount: string; optional?: boolean } }
+  >({
+    mutationFn: ({ iid, patch }) =>
+      apiJson.patch(`/api/recipes/${recipeId}/ingredients/${iid}`, patch),
+    onSuccess: invalidate,
+    onError: (e) => toast.show(e.message, "error"),
+  });
+  const ingredientDeleteMutation = useMutation<void, ApiError, string>({
+    mutationFn: (iid) => apiJson.delete(`/api/recipes/${recipeId}/ingredients/${iid}`),
+    onSuccess: invalidate,
+    onError: (e) => toast.show(e.message, "error"),
+  });
+
+  const stepPatchMutation = useMutation<
+    unknown,
+    ApiError,
+    {
+      sid: string;
+      patch: { instruction: string; timerSeconds: number | null; note: string | null };
+    }
+  >({
+    mutationFn: ({ sid, patch }) =>
+      apiJson.patch(`/api/recipes/${recipeId}/steps/${sid}`, patch),
+    onSuccess: invalidate,
+    onError: (e) => toast.show(e.message, "error"),
+  });
+  const stepDeleteMutation = useMutation<void, ApiError, string>({
+    mutationFn: (sid) => apiJson.delete(`/api/recipes/${recipeId}/steps/${sid}`),
+    onSuccess: invalidate,
+    onError: (e) => toast.show(e.message, "error"),
+  });
+
+  const sourceDeleteMutation = useMutation<void, ApiError, string>({
+    mutationFn: (sid) => apiJson.delete(`/api/recipes/${recipeId}/sources/${sid}`),
+    onSuccess: invalidate,
     onError: (e) => toast.show(e.message, "error"),
   });
 
@@ -93,14 +149,15 @@ export function RecipeDetailClient({ recipeId }: { recipeId: string }) {
   return (
     <>
       <main className="mx-auto w-full max-w-content px-4 py-12">
-        {/* 헤더 — 인라인 편집 */}
         <header>
           <input
             type="text"
             defaultValue={recipe.title}
             onBlur={(e) => {
-              if (e.target.value.trim() && e.target.value !== recipe.title) {
-                titleMutation.mutate({ title: e.target.value.trim() });
+              const v = e.target.value.trim();
+              // 빈 값은 zod min(1) 위반 — 저장 시도 안 함.
+              if (v && v !== recipe.title) {
+                titleMutation.mutate(v);
               }
             }}
             className="w-full bg-transparent text-display-lg text-ink outline-none focus:bg-canvas-parchment rounded-sm px-1 -mx-1"
@@ -113,7 +170,7 @@ export function RecipeDetailClient({ recipeId }: { recipeId: string }) {
             onBlur={(e) => {
               const v = e.target.value.trim() || null;
               if (v !== (recipe.servings ?? null)) {
-                titleMutation.mutate({ servings: v });
+                servingsMutation.mutate(v);
               }
             }}
             className="mt-2 w-full bg-transparent text-body text-ink-muted-80 outline-none focus:bg-canvas-parchment rounded-sm px-1 -mx-1"
@@ -126,7 +183,7 @@ export function RecipeDetailClient({ recipeId }: { recipeId: string }) {
             onBlur={(e) => {
               const v = e.target.value.trim() || null;
               if (v !== (recipe.description ?? null)) {
-                titleMutation.mutate({ description: v });
+                descriptionMutation.mutate(v);
               }
             }}
             className="mt-3 w-full bg-transparent text-body text-ink outline-none focus:bg-canvas-parchment rounded-sm px-1 -mx-1 resize-y"
@@ -135,7 +192,7 @@ export function RecipeDetailClient({ recipeId }: { recipeId: string }) {
         </header>
 
         <div className="mt-6 flex gap-3">
-          <Button onClick={() => setAttemptOpen(true)}>조정하기 / 기록하기</Button>
+          <Button onClick={() => setAttemptOpen(true)}>기록하기</Button>
           <Button
             variant="secondary-pill"
             onClick={() => {
@@ -148,6 +205,10 @@ export function RecipeDetailClient({ recipeId }: { recipeId: string }) {
             삭제
           </Button>
         </div>
+        {/*
+          L70: 수치 조정(RecipeCustomization UI)은 v0.5 OOS-5a — 다음 사이클.
+          v0.5에서는 시도 기록의 "변경 사항" 자유 텍스트로 1차 대응 (Attempt.changes).
+        */}
 
         <section className="mt-10">
           <h2 className="text-body-strong text-ink">재료</h2>
@@ -159,22 +220,20 @@ export function RecipeDetailClient({ recipeId }: { recipeId: string }) {
                 <li key={ing.id}>
                   <IngredientRow
                     value={{ name: ing.name, amount: ing.amount, optional: ing.optional }}
-                    onChange={(next) => {
-                      apiJson
-                        .patch(`/api/recipes/${recipeId}/ingredients/${ing.id}`, {
+                    onChange={(next: IngredientRowValue) =>
+                      ingredientPatchMutation.mutate({
+                        iid: ing.id,
+                        patch: {
                           name: next.name,
                           amount: next.amount,
                           optional: next.optional,
-                        })
-                        .then(() => qc.invalidateQueries({ queryKey: ["recipe", recipeId] }))
-                        .catch((e: ApiError) => toast.show(e.message, "error"));
-                    }}
-                    onRemove={() => {
-                      apiJson
-                        .delete(`/api/recipes/${recipeId}/ingredients/${ing.id}`)
-                        .then(() => qc.invalidateQueries({ queryKey: ["recipe", recipeId] }))
-                        .catch((e: ApiError) => toast.show(e.message, "error"));
-                    }}
+                        },
+                      })
+                    }
+                    onRemove={() => ingredientDeleteMutation.mutate(ing.id)}
+                    disabled={
+                      ingredientPatchMutation.isPending || ingredientDeleteMutation.isPending
+                    }
                   />
                 </li>
               ))}
@@ -197,22 +256,18 @@ export function RecipeDetailClient({ recipeId }: { recipeId: string }) {
                       timerSeconds: step.timerSeconds,
                       note: step.note,
                     }}
-                    onChange={(next) => {
-                      apiJson
-                        .patch(`/api/recipes/${recipeId}/steps/${step.id}`, {
+                    onChange={(next: StepRowValue) =>
+                      stepPatchMutation.mutate({
+                        sid: step.id,
+                        patch: {
                           instruction: next.instruction,
-                          timerSeconds: next.timerSeconds,
-                          note: next.note,
-                        })
-                        .then(() => qc.invalidateQueries({ queryKey: ["recipe", recipeId] }))
-                        .catch((e: ApiError) => toast.show(e.message, "error"));
-                    }}
-                    onRemove={() => {
-                      apiJson
-                        .delete(`/api/recipes/${recipeId}/steps/${step.id}`)
-                        .then(() => qc.invalidateQueries({ queryKey: ["recipe", recipeId] }))
-                        .catch((e: ApiError) => toast.show(e.message, "error"));
-                    }}
+                          timerSeconds: next.timerSeconds ?? null,
+                          note: next.note ?? null,
+                        },
+                      })
+                    }
+                    onRemove={() => stepDeleteMutation.mutate(step.id)}
+                    disabled={stepPatchMutation.isPending || stepDeleteMutation.isPending}
                   />
                 </li>
               ))}
@@ -250,12 +305,7 @@ export function RecipeDetailClient({ recipeId }: { recipeId: string }) {
                 <SourceCard
                   key={src.id}
                   source={src}
-                  onDelete={() => {
-                    apiJson
-                      .delete(`/api/recipes/${recipeId}/sources/${src.id}`)
-                      .then(() => qc.invalidateQueries({ queryKey: ["recipe", recipeId] }))
-                      .catch((e: ApiError) => toast.show(e.message, "error"));
-                  }}
+                  onDelete={() => sourceDeleteMutation.mutate(src.id)}
                 />
               ))}
             </div>
@@ -270,7 +320,7 @@ export function RecipeDetailClient({ recipeId }: { recipeId: string }) {
         steps={steps}
         onSaved={() => {
           setAttemptOpen(false);
-          qc.invalidateQueries({ queryKey: ["recipe", recipeId] });
+          invalidate();
           toast.show("시도 기록을 저장했어요.", "success");
         }}
       />
