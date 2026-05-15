@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Apple Web Design System — 페이지 기본값. */
+
+html,
+body {
+  background: #ffffff;
+  color: #1d1d1f;
+  font-family: "SF Pro Text", "Pretendard Variable", "Pretendard", ui-sans-serif,
+    system-ui, -apple-system, sans-serif;
+  /* Apple 본문은 body 17px 기준 (caption 14px, headline 28~40px). */
+  font-size: 17px;
+  line-height: 1.47;
+  letter-spacing: -0.022em;
+}
+
+/* 포커스 링: 2px solid primary-focus (#0071e3) — tech-decision §13 / design-decision §접근성. */
+:focus-visible {
+  outline: 2px solid #0071e3;
+  outline-offset: 2px;
+}
+
+/* 키보드 사용자 외에는 outline 숨김. focus-visible 단독 사용으로 처리. */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* 시스템 micro-interaction: press = scale(0.95). 일반 버튼 active 시 적용. */
+button:active,
+a:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
+}
+
+/* 모바일 safe-area inset. */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
