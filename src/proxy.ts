@@ -1,5 +1,8 @@
 /**
- * Next.js middleware — 모든 페이지 진입 시 Supabase 세션 확인.
+ * Next.js Proxy (구 middleware) — 모든 페이지 진입 시 Supabase 세션 확인.
+ *
+ * Next.js 16에서 middleware.ts → proxy.ts로 파일 컨벤션이 변경됨.
+ * 동작·matcher 의미는 동일.
  *
  * 미로그인 사용자가 임의 페이지(/recipe/X, /search 등)로 직접 진입 시
  * /sign-in으로 redirect. (홈만 server-side requireAuth로 처리하던 H1 가드 누락 보강)
@@ -22,7 +25,7 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // 공개 경로 + API는 통과. API는 자체 requireAuth가 401 응답을 줌.
