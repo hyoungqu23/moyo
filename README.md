@@ -50,12 +50,14 @@ Then fill in `.env.local`:
 
 | Variable | 출처 | 비고 |
 |----------|------|------|
-| `DATABASE_URL` | Supabase Dashboard → Project Settings → Database → Connection string (URI) | Drizzle direct connection. 로컬 Supabase면 기본값(`postgres://postgres:postgres@127.0.0.1:54322/postgres`) 사용 |
+| `DATABASE_URL` | Supabase Dashboard → Project Settings → Database → Connection string (URI, Direct, 5432) | Drizzle direct connection |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase Dashboard → Project Settings → API → Project URL | 클라이언트 노출 OK |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard → API → `anon` key | 클라이언트 노출 OK |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard → API → `service_role` key | **server-only**. `NEXT_PUBLIC_` 절대 금지 |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` *(권장)* | Supabase Dashboard → API → "Project API keys" → `publishable` key (`sb_publishable_...`) | 클라이언트 노출 OK. 새 명칭 (2025+). |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` *(legacy fallback)* | 구 명칭. 둘 중 하나만 있으면 됨 | 코드가 PUBLISHABLE 우선, ANON fallback으로 읽음 |
 | `YOUTUBE_API_KEY` | Google Cloud Console → YouTube Data API v3 → API key | **server-only**. Ingestion 시 `videos.list` 단일 호출에만 사용 |
 | `GEMINI_API_KEY` | (v0.5 OOS — `stub` 값 그대로 두면 됨) | LLM 실호출은 다음 사이클 |
+
+**SUPABASE_SERVICE_ROLE_KEY는 v0.5에서 미사용** — supabase-js는 Auth(getUser)에만 쓰고 DB 쿼리는 Drizzle direct connection 단일 경로. admin 호출 도입 시 다음 사이클에 추가.
 
 ### 3. Configure Google OAuth (Supabase)
 

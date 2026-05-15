@@ -36,7 +36,10 @@ export async function proxy(request: NextRequest) {
   const response = NextResponse.next({ request });
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Supabase가 anon → publishable로 이름 변경 — 둘 다 지원.
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   // 환경 변수 미설정 시 redirect 시도 자체 불가 → sign-in으로 보내고 거기서 안내.
   if (!supabaseUrl || !supabaseAnonKey) {
